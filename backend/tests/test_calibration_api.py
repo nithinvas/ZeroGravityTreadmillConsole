@@ -10,10 +10,10 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from trendmill.api.app import create_app
-from trendmill.device.simulator import CELL_COUNTS_PER_KG, SimulatedBoard
-from trendmill.logs import setup_logging
-from trendmill.service import Console, ConsoleConfig
+from treadmill.api.app import create_app
+from treadmill.device.simulator import CELL_COUNTS_PER_KG, SimulatedBoard
+from treadmill.logs import setup_logging
+from treadmill.service import Console, ConsoleConfig
 
 RATE = 976.5625
 # One shared coefficient: the mean of the simulated cells' sensitivities.
@@ -188,7 +188,7 @@ def test_firmware_change_invalidates_the_calibration(tmp_path: Path) -> None:
 
 
 def test_simulator_controls_are_refused_for_real_hardware(tmp_path: Path) -> None:
-    from trendmill.device.replay import ReplaySource
+    from treadmill.device.replay import ReplaySource
 
     setup_logging(None, console=False)
     console = Console(ReplaySource(tmp_path / "none"), ConsoleConfig(data_dir=tmp_path, nominal_rate_hz=RATE))

@@ -6,9 +6,9 @@
 # reason it is here rather than a full desktop session with a browser on top.
 set -euo pipefail
 
-: "${TRENDMILL_HOST:=127.0.0.1}"
-: "${TRENDMILL_PORT:=8080}"
-URL="http://${TRENDMILL_HOST}:${TRENDMILL_PORT}"
+: "${TREADMILL_HOST:=127.0.0.1}"
+: "${TREADMILL_PORT:=8080}"
+URL="http://${TREADMILL_HOST}:${TREADMILL_PORT}"
 
 CHROMIUM="$(command -v chromium || command -v chromium-browser || true)"
 [ -n "$CHROMIUM" ] || { echo "no chromium found" >&2; exit 1; }

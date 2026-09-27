@@ -10,13 +10,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from trendmill.api.app import create_app
-from trendmill.calibration.profile import CalibrationProfile, Method
-from trendmill.device.simulator import CELL_COUNTS_PER_KG, ZERO_OFFSETS, SimulatedBoard
-from trendmill.logs import setup_logging
-from trendmill.processor import Sample
-from trendmill.service import Console, ConsoleConfig
-from trendmill.sessions.manager import SessionDetails, SessionManager
+from treadmill.api.app import create_app
+from treadmill.calibration.profile import CalibrationProfile, Method
+from treadmill.device.simulator import CELL_COUNTS_PER_KG, ZERO_OFFSETS, SimulatedBoard
+from treadmill.logs import setup_logging
+from treadmill.processor import Sample
+from treadmill.service import Console, ConsoleConfig
+from treadmill.sessions.manager import SessionDetails, SessionManager
 
 RATE = 976.5625
 US = 1_000_000

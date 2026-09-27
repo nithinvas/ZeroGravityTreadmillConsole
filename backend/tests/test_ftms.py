@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from trendmill.treadmill import ftms
+from treadmill.belt import ftms
 
 
 def test_uuids_expand_to_the_full_128_bit_form() -> None:

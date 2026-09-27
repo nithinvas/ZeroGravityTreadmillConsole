@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts the TrendMill console. Arguments pass through to `trendmill serve`,
+# Starts the TreadMill console. Arguments pass through to `treadmill serve`,
 # e.g. ./run.sh --source sim   or   ./run.sh --nominal-rate 250
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -10,4 +10,4 @@ if [ ! -f "$ROOT/frontend/dist/index.html" ]; then
 fi
 
 cd "$ROOT/backend"
-exec uv run --python 3.12 trendmill serve "$@"
+exec uv run --python 3.12 treadmill serve "$@"

@@ -1,4 +1,4 @@
-# TrendMill Gait Console — Phase 1 Design (N100 SBC)
+# TreadMill Gait Console — Phase 1 Design (N100 SBC)
 
 Draft for review · 2026-09-19
 
@@ -106,7 +106,7 @@ All four channels are still decoded and recorded. That costs nothing, lets Phase
 
 ## 4. System architecture
 
-The appliance is two systemd services on one N100: `trendmill-core`, a single Python process that owns the board, the maths, the storage and the API; and `trendmill-kiosk`, a locked-down browser showing the UI from `localhost`. Nothing leaves the machine in Phase 1.
+The appliance is two systemd services on one N100: `treadmill-core`, a single Python process that owns the board, the maths, the storage and the API; and `treadmill-kiosk`, a locked-down browser showing the UI from `localhost`. Nothing leaves the machine in Phase 1.
 
 ```mermaid
 flowchart LR
@@ -385,7 +385,7 @@ A `TreadmillLink` interface with two implementations: `FtmsLink`, built on `blea
 
 ### Status, as built
 
-Built and tested against the simulated machine (`backend/trendmill/treadmill/`, 27 controller tests and 21 protocol tests): connect and request control, start and stop, speed and incline stepping within the machine's reported range, belt state tracked from the machine's own reports, a session that starts the belt at 1.0 km/h and stops it when the session ends, and every speed change recorded as a session condition.
+Built and tested against the simulated machine (`backend/treadmill/treadmill/`, 27 controller tests and 21 protocol tests): connect and request control, start and stop, speed and incline stepping within the machine's reported range, belt state tracked from the machine's own reports, a session that starts the belt at 1.0 km/h and stops it when the session ends, and every speed change recorded as a session condition.
 
 Two deviations from the sections above, both deliberate:
 
@@ -456,7 +456,7 @@ A metric the engine cannot support is sent as `null` with a reason, and the UI s
 
 | Store | Contents | Format |
 | --- | --- | --- |
-| `trendmill.db` (SQLite, WAL mode) | Sessions, condition blocks, segments, steps, tares, calibration profiles, treadmill commands and status events, speed reports, audit log | Relational, migrations via Alembic |
+| `treadmill.db` (SQLite, WAL mode) | Sessions, condition blocks, segments, steps, tares, calibration profiles, treadmill commands and status events, speed reports, audit log | Relational, migrations via Alembic |
 | `sessions/<uuid>/raw/segment-NNNN.tmraw` | Every USB transfer with its arrival time | 16-byte header, then 72-byte records: 8-byte arrival time in ns + the 64-byte transfer |
 | `sessions/<uuid>/manifest.json` | Immutable snapshot at finalise: engine version and config, calibration ID, tare, segment SHA-256 checksums | JSON |
 
@@ -555,18 +555,18 @@ The unit is compact and passively cooled, so it will be tested in its final moun
 | --- | --- | --- |
 | OS | Debian 13 (trixie) or Ubuntu Server 24.04 LTS, amd64, minimal install | Both are supported; one is chosen as the reference image. Their kernels (6.12 and 6.8) both support the N100's Alder Lake-N graphics and USB |
 | Display | Cage (single-app Wayland compositor) running Chromium in kiosk mode | No desktop to escape to; restarts cleanly |
-| Runtime | Python 3.12 installed and locked by `uv` under `/opt/trendmill/<version>/` | Independent of the distribution's own Python (3.13 on Debian 13, 3.12 on Ubuntu 24.04), so both distributions run identical code |
-| Package | `trendmill_<version>_amd64.deb`: backend, built UI, systemd units, udev rules | One file to install, verify and roll back; built and tested in CI for both distributions |
+| Runtime | Python 3.12 installed and locked by `uv` under `/opt/treadmill/<version>/` | Independent of the distribution's own Python (3.13 on Debian 13, 3.12 on Ubuntu 24.04), so both distributions run identical code |
+| Package | `treadmill_<version>_amd64.deb`: backend, built UI, systemd units, udev rules | One file to install, verify and roll back; built and tested in CI for both distributions |
 
 Docker is used for testing (section 14) but not on the appliance. It adds a USB passthrough layer and an extra failure mode to a machine that runs one application.
 
 ### System configuration
 
-- **USB permissions and power.** A udev rule for 413d:2107 gives the `trendmill` group access and turns USB autosuspend **off** for that device. Autosuspend is a classic cause of silently dropped transfers on Linux, and one the Mac cannot reproduce.
+- **USB permissions and power.** A udev rule for 413d:2107 gives the `treadmill` group access and turns USB autosuspend **off** for that device. Autosuspend is a classic cause of silently dropped transfers on Linux, and one the Mac cannot reproduce.
 - **The board's HID interface.** Interface 0 of the board declares itself a boot keyboard. Left alone, Linux registers it as a keyboard that could type into the kiosk. A udev rule sets `LIBINPUT_IGNORE_DEVICE=1` on it, so it can never inject input.
 - **Touch panel.** Detected through libinput; a udev rule pins it to the correct display output, with a calibration matrix only if the panel needs one.
-- **Bluetooth.** BlueZ from the distribution. The Wi-Fi/Bluetooth card needs Intel firmware: included on Ubuntu, and in Debian's `firmware-iwlwifi` package from `non-free-firmware`. The `trendmill` user gets Bluetooth access through a D-Bus policy, not root. Wi-Fi is disabled with `rfkill` unless the clinic needs it.
-- **Services.** `trendmill-core` runs as an unprivileged `trendmill` user with `Restart=always` and a 10 s systemd watchdog. `trendmill-kiosk` auto-logs in a `kiosk` user and starts Cage and Chromium pointed at `http://127.0.0.1:8080`.
+- **Bluetooth.** BlueZ from the distribution. The Wi-Fi/Bluetooth card needs Intel firmware: included on Ubuntu, and in Debian's `firmware-iwlwifi` package from `non-free-firmware`. The `treadmill` user gets Bluetooth access through a D-Bus policy, not root. Wi-Fi is disabled with `rfkill` unless the clinic needs it.
+- **Services.** `treadmill-core` runs as an unprivileged `treadmill` user with `Restart=always` and a 10 s systemd watchdog. `treadmill-kiosk` auto-logs in a `kiosk` user and starts Cage and Chromium pointed at `http://127.0.0.1:8080`.
 - **Firmware settings.** In the MSI BIOS: power on after AC loss, no sleep or suspend, and the hardware watchdog on if offered.
 - **Time.** Measurement uses the monotonic clock only. The wall clock labels sessions; the machine is offline, so the real-time clock battery matters.
 - **Logs.** Persistent journald, capped at 500 MB; details in section 12.
@@ -575,8 +575,8 @@ Docker is used for testing (section 14) but not on the appliance. It adds a USB 
 ### Updates and rollback
 
 1. The technician inserts a USB stick with a signed package and taps **Update** on the Technician screen.
-2. The backend verifies the signature, backs up the database, installs to `/opt/trendmill/<new version>/`, runs migrations, and switches the `current` symlink.
-3. On the next boot, if `trendmill-core` fails its health check three times, the symlink returns to the previous version and the database backup is restored.
+2. The backend verifies the signature, backs up the database, installs to `/opt/treadmill/<new version>/`, runs migrations, and switches the `current` symlink.
+3. On the next boot, if `treadmill-core` fails its health check three times, the symlink returns to the previous version and the database backup is restored.
 
 Updates are refused while a session is recording.
 
@@ -586,12 +586,12 @@ A new unit is built from a clean Ubuntu install by one idempotent script, `provi
 
 ### Status, as built
 
-`deploy/` holds the working deployment, and [deployment.md](deployment.md) is the runbook: `build-release.sh` (builds the UI, runs the tests, writes a tarball), `provision.sh` (packages, users, udev and D-Bus rules, the release under `/opt/trendmill/releases/<version>` with `current` symlinked to it, both services, the Cage/Chromium kiosk), and `test-provision.sh`, which runs the whole install on a clean Debian 13 or Ubuntu 24.04 container and then checks the console serves the API, the UI and treadmill control. Re-running `provision.sh` upgrades in place and is verified to leave sessions, calibration and the settings file untouched.
+`deploy/` holds the working deployment, and [deployment.md](deployment.md) is the runbook: `build-release.sh` (builds the UI, runs the tests, writes a tarball), `provision.sh` (packages, users, udev and D-Bus rules, the release under `/opt/treadmill/releases/<version>` with `current` symlinked to it, both services, the Cage/Chromium kiosk), and `test-provision.sh`, which runs the whole install on a clean Debian 13 or Ubuntu 24.04 container and then checks the console serves the API, the UI and treadmill control. Re-running `provision.sh` upgrades in place and is verified to leave sessions, calibration and the settings file untouched.
 
 Three bugs came out of that container test, none of which the Mac could have shown:
 
 - `provision.sh` sourced `/etc/os-release`, which defines `VERSION` and silently overwrote the release version being installed.
-- `uv` put its managed interpreter under `/root`, so the virtualenv recorded a base path the unprivileged service user cannot read. The service died at startup with `No module named 'encodings'`, which names nothing relevant. The interpreter now goes to `/opt/trendmill/python`.
+- `uv` put its managed interpreter under `/root`, so the virtualenv recorded a base path the unprivileged service user cannot read. The service died at startup with `No module named 'encodings'`, which names nothing relevant. The interpreter now goes to `/opt/treadmill/python`.
 - `StartLimitIntervalSec` was in `[Service]`, where systemd ignores it, leaving the default limit of five restarts in ten seconds — after which a clinic would be left at a dead screen with no further attempts.
 
 Not built, from the sections above: the `.deb` package, signed updates from the Technician screen with automatic rollback on three failed health checks, LUKS/TPM enrolment, and the firewall and SSH hardening. Updates are a re-run of `provision.sh`, and rollback is repointing the `current` symlink — both documented in the runbook.
@@ -637,22 +637,22 @@ health rate_hz=976.49 deficit=0 short=0 timeouts=0 queue_max=3 cpu=4.1% rss=142M
 On the N100, or over SSH from a laptop (`ssh tech@<n100-address>` first):
 
 ```bash
-journalctl -u trendmill-core -f
+journalctl -u treadmill-core -f
 ```
 
 ```bash
-journalctl -u trendmill-core -f -p warning
+journalctl -u treadmill-core -f -p warning
 ```
 
 ```bash
-trendmill logs --follow --component gait --level debug
+treadmill logs --follow --component gait --level debug
 ```
 
 ```bash
-journalctl -u trendmill-kiosk -f
+journalctl -u treadmill-kiosk -f
 ```
 
-`trendmill logs` is a small command shipped in the package: it follows the journal and prints the JSON fields as readable, colour-coded lines, filtered by component and level.
+`treadmill logs` is a small command shipped in the package: it follows the journal and prints the JSON fields as readable, colour-coded lines, filtered by component and level.
 
 **In the app:** Technician → Logs shows a live stream from an in-memory buffer of the last 5,000 records, with filters by level and component, a pause button, and Save to USB. It sits behind the technician PIN, because logs contain device and session detail.
 
@@ -662,7 +662,7 @@ journalctl -u trendmill-kiosk -f
 
 | Location | Contents | Retention |
 | --- | --- | --- |
-| systemd journal, `/var/log/journal` | Everything from `trendmill-core` and `trendmill-kiosk` | Capped at 500 MB, oldest first out |
+| systemd journal, `/var/log/journal` | Everything from `treadmill-core` and `treadmill-kiosk` | Capped at 500 MB, oldest first out |
 | `sessions/<uuid>/logs/events.jsonl` | Every record tagged with that session | With the session; immutable after finalise; included in exports |
 | `sessions/<uuid>/logs/diagnostics.jsonl` | A health snapshot every second, as FR-04 requires | With the session |
 | Frontend errors | Uncaught UI errors and WebSocket drops, sent to `POST /api/client-log` and logged as component `ui` | Journal |
@@ -767,15 +767,15 @@ Mode 1 works because the board's data interface is vendor-specific: macOS binds 
 - **Bluetooth works on the Mac too.** `bleak` uses the Mac's own Bluetooth, so the Mac can connect to the real treadmill and run the control flow. One difference: macOS hides Bluetooth addresses and gives each device a per-computer ID instead, so the pinned treadmill is stored per platform.
 - **Record on the Mac, replay on the N100.** A session recorded on the Mac is replayed on the N100 (and vice versa); the step lists must match. Results are compared with a tolerance, not bit-for-bit, because NumPy on Apple Silicon and on x86-64 can differ in the last digits of a float.
 - **Touch is emulated, then confirmed.** Playwright runs the UI flow with touch emulation, and Chrome's device mode shows the layout at the panel's resolution. How the real panel feels, and its calibration, can only be checked on the N100.
-- **Logs are the same.** On the Mac the backend logs the same JSON to the terminal instead of the journal, so `trendmill logs` filters work identically.
+- **Logs are the same.** On the Mac the backend logs the same JSON to the terminal instead of the journal, so `treadmill logs` filters work identically.
 - **Timing is tested, not assumed.** Arrival jitter on macOS differs from Linux. The sample clock's tests already cover bursty and jittered arrivals, and the N100 checklist measures the real jitter.
 
 ### What only the N100 can confirm
 
 A script, `tools/n100_check.sh`, runs once on each new unit and prints pass or fail for each item:
 
-1. The board enumerates as 413d:2107 and the `trendmill` user can open it without root.
-2. The Bluetooth adapter is up, and the `trendmill` user connects to the pinned treadmill and is granted control.
+1. The board enumerates as 413d:2107 and the `treadmill` user can open it without root.
+2. The Bluetooth adapter is up, and the `treadmill` user connects to the pinned treadmill and is granted control.
 3. With no one on the belt: Stop is confirmed by the treadmill within 500 ms; switching off Bluetooth mid-run raises the alarm within 2 s.
 4. Bluetooth stays connected for the whole 8-hour soak at the installed position.
 5. USB autosuspend is off for the board.
@@ -789,7 +789,7 @@ A script, `tools/n100_check.sh`, runs once on each new unit and prints pass or f
 13. The encrypted disk unlocks from the TPM without a prompt.
 14. Touch: taps in all four corners register within 5 px of the target; pinch and long-press do nothing.
 15. The board's HID interface is ignored by libinput and cannot type into the kiosk.
-16. `trendmill logs --follow` shows the health line every 10 s, and the Logs panel shows the same stream.
+16. `treadmill logs --follow` shows the health line every 10 s, and the Logs panel shows the same stream.
 
 Then the 8-hour soak from section 13. If mode 1 passes on the Mac, mode 2 passes in CI, and this checklist passes on the N100, the remaining risk is in the gait algorithm's accuracy, which only the acceptance test with real participants can settle.
 
@@ -800,8 +800,8 @@ The first milestone is recording real 977 Hz sessions, because every later step 
 ### Repository layout
 
 ```text
-trendmill-console/
-  backend/trendmill/
+treadmill-console/
+  backend/treadmill/
     device/        usb_reader.py, replay_device.py
     treadmill/     ftms.py, link.py, simulator.py, safety.py
     protocol/      decoder.py, sample_clock.py, health.py
@@ -815,7 +815,7 @@ trendmill-console/
   backend/tests/   unit/, synthetic/, golden/, integration/
   frontend/        src/, tests/, e2e/
   deploy/          provision.sh, systemd/, udev/, debian/
-  tools/           record.py, replay.py, n100_check.sh, trendmill_logs.py
+  tools/           record.py, replay.py, n100_check.sh, treadmill_logs.py
 ```
 
 ### Milestones

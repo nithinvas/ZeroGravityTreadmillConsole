@@ -1,6 +1,6 @@
 # Deploying on the mini PC
 
-How to turn the mini PC into a TrendMill appliance: power on, and within a minute
+How to turn the mini PC into a TreadMill appliance: power on, and within a minute
 the touch screen shows the console with the board connected and the treadmill
 reachable.
 
@@ -101,11 +101,11 @@ Reboot, tap `Del`, and set:
 ## 2. Build the release (on the Mac)
 
 ```bash
-cd ~/projects/trendmill-console && ./deploy/build-release.sh
+cd ~/projects/treadmill-console && ./deploy/build-release.sh
 ```
 
 That builds the UI, runs the full test suite, and writes
-`dist/trendmill-<version>+<stamp>.tar.gz` with a SHA-256 beside it. Copy both to
+`dist/treadmill-<version>+<stamp>.tar.gz` with a SHA-256 beside it. Copy both to
 a USB stick.
 
 The appliance never builds the UI itself — no Node, no npm, no network for the
@@ -114,13 +114,13 @@ part most likely to differ between machines.
 ## 3. Provision (on the mini PC)
 
 ```bash
-tar -xzf trendmill-<version>+<stamp>.tar.gz
-sudo ./trendmill-<version>+<stamp>/deploy/provision.sh
+tar -xzf treadmill-<version>+<stamp>.tar.gz
+sudo ./treadmill-<version>+<stamp>/deploy/provision.sh
 ```
 
 Ten to fifteen minutes on a first run, mostly package downloads. It installs
-packages, creates the `trendmill` and `kiosk` users, installs the USB and
-Bluetooth rules, unpacks the release to `/opt/trendmill/releases/<version>`,
+packages, creates the `treadmill` and `kiosk` users, installs the USB and
+Bluetooth rules, unpacks the release to `/opt/treadmill/releases/<version>`,
 builds its Python environment with `uv`, and starts both services.
 
 Useful flags:
@@ -134,15 +134,15 @@ Useful flags:
 ## 4. Check it
 
 ```bash
-systemctl status trendmill-core              # running, no restarts
+systemctl status treadmill-core              # running, no restarts
 curl -s localhost:8080/api/status | head -c 300
-journalctl -u trendmill-core -f              # live
+journalctl -u treadmill-core -f              # live
 ```
 
 **The board.** With it plugged in:
 
 ```bash
-sudo /opt/trendmill/current/backend/.venv/bin/trendmill probe
+sudo /opt/treadmill/current/backend/.venv/bin/treadmill probe
 ```
 
 It should find `413d:2107`, claim interface 1, and read packets at about 977
@@ -150,7 +150,7 @@ samples/s per channel.
 
 **`Resource busy` (Errno 16) is expected while the console is running** — the
 service already holds the interface, and only one process may. Stop it first
-(`systemctl stop trendmill-core`), probe, then start it again. To check a
+(`systemctl stop treadmill-core`), probe, then start it again. To check a
 *running* appliance instead, just ask the console what it sees:
 
 ```bash
@@ -172,8 +172,8 @@ bluetoothctl scan on     # if nothing is found: is it advertising at all?
 **The screen.** The kiosk should already be up. If it is not:
 
 ```bash
-systemctl status trendmill-kiosk
-journalctl -u trendmill-kiosk -n 50
+systemctl status treadmill-kiosk
+journalctl -u treadmill-kiosk -n 50
 ```
 
 **End to end.** Choose coefficients on the Calibration tab (or **Use default
@@ -185,19 +185,19 @@ block per speed.
 
 ## Settings
 
-One file, `/etc/trendmill/trendmill.env`, which upgrades never overwrite:
+One file, `/etc/treadmill/treadmill.env`, which upgrades never overwrite:
 
 ```bash
-sudo nano /etc/trendmill/trendmill.env
-sudo systemctl restart trendmill-core
+sudo nano /etc/treadmill/treadmill.env
+sudo systemctl restart treadmill-core
 ```
 
 The two worth knowing:
 
-- `TRENDMILL_SOURCE=sim` runs the appliance against a simulated board, so the
+- `TREADMILL_SOURCE=sim` runs the appliance against a simulated board, so the
   screen, the kiosk and the treadmill can be commissioned before the hardware is
   on the bench.
-- `TRENDMILL_EXTRA_ARGS=--treadmill-address AA:BB:CC:DD:EE:FF` pins one
+- `TREADMILL_EXTRA_ARGS=--treadmill-address AA:BB:CC:DD:EE:FF` pins one
   treadmill. **Do this in any clinic with more than one machine in range** — the
   console otherwise connects to the first treadmill that answers, which may be
   the one in the next room. Find the address with `bluetoothctl scan on`.
@@ -206,12 +206,12 @@ The two worth knowing:
 
 | Path | What |
 | --- | --- |
-| `/opt/trendmill/current` | Symlink to the running release |
-| `/opt/trendmill/releases/<version>` | Each installed release, kept for rollback |
-| `/var/lib/trendmill/sessions/` | One folder per session: raw samples, steps, trace, summary |
-| `/var/lib/trendmill/calibration/` | `defaults.json` and the profile in use |
-| `/var/lib/trendmill/logs/` | JSON logs; also in the journal |
-| `/etc/trendmill/trendmill.env` | Settings |
+| `/opt/treadmill/current` | Symlink to the running release |
+| `/opt/treadmill/releases/<version>` | Each installed release, kept for rollback |
+| `/var/lib/treadmill/sessions/` | One folder per session: raw samples, steps, trace, summary |
+| `/var/lib/treadmill/calibration/` | `defaults.json` and the profile in use |
+| `/var/lib/treadmill/logs/` | JSON logs; also in the journal |
+| `/etc/treadmill/treadmill.env` | Settings |
 
 ## Upgrading and rolling back
 
@@ -222,9 +222,9 @@ service restarts, and an in-flight session would be saved as *interrupted*.
 Roll back to the previous release:
 
 ```bash
-ls /opt/trendmill/releases
-sudo ln -sfn /opt/trendmill/releases/<previous> /opt/trendmill/current
-sudo systemctl restart trendmill-core
+ls /opt/treadmill/releases
+sudo ln -sfn /opt/treadmill/releases/<previous> /opt/treadmill/current
+sudo systemctl restart treadmill-core
 ```
 
 Sessions and calibration are outside the release, so they survive both.
@@ -234,7 +234,7 @@ Sessions and calibration are outside the release, so they survive both.
 The session folders are the record; the SQLite index is rebuilt from them.
 
 ```bash
-sudo tar -czf /media/usb/trendmill-$(date +%F).tar.gz -C /var/lib trendmill
+sudo tar -czf /media/usb/treadmill-$(date +%F).tar.gz -C /var/lib treadmill
 ```
 
 ## The support loop: diagnose, fix, deploy
@@ -319,7 +319,7 @@ identified by the second one.
 ### 1. Is the console running?
 
 ```bash
-systemctl status trendmill-core
+systemctl status treadmill-core
 ```
 
 `active (running)` with no recent restarts. If it is restarting in a loop, skip
@@ -345,17 +345,17 @@ One command that answers most questions:
 ### 3. What happened just before?
 
 ```bash
-trendmill logs -n 200
+treadmill logs -n 200
 ```
 
-(On the appliance: `/opt/trendmill/current/backend/.venv/bin/trendmill logs`.)
+(On the appliance: `/opt/treadmill/current/backend/.venv/bin/treadmill logs`.)
 Every line is a structured event — a name and fields, not prose — so a whole
 class of problem can be pulled out directly:
 
 ```bash
-trendmill logs -n 500 --level warning        # only things that went wrong
-trendmill logs -n 500 --component usb        # just the board
-trendmill logs -n 500 --component ble        # just the treadmill
+treadmill logs -n 500 --level warning        # only things that went wrong
+treadmill logs -n 500 --component usb        # just the board
+treadmill logs -n 500 --component ble        # just the treadmill
 ```
 
 Components: `usb`, `decoder`, `clock`, `stream`, `calibration`, `gait`, `ble`,
@@ -368,7 +368,7 @@ arrived all at once.
 ### 4. Watch it happen
 
 ```bash
-trendmill logs -f --component height
+treadmill logs -f --component height
 ```
 
 Leave it running and reproduce the problem. **Raise the detail without
@@ -386,7 +386,7 @@ leaves a clinic machine logging at debug forever.
 ### 5. When the service will not start
 
 ```bash
-journalctl -u trendmill-core -n 100 --no-pager
+journalctl -u treadmill-core -n 100 --no-pager
 ```
 
 The journal catches crashes *before* the app's logging is up — a bad config, a
@@ -399,8 +399,8 @@ untouched**, in `raw/segment-*.tmraw`. Copy the session folder off the machine
 and replay it on a laptop:
 
 ```bash
-scp -r root@<machine>:/var/lib/trendmill/sessions/<id> .
-trendmill inspect <id>/raw/segment-0001.tmraw
+scp -r root@<machine>:/var/lib/treadmill/sessions/<id> .
+treadmill inspect <id>/raw/segment-0001.tmraw
 ./run.sh --source replay --replay <id>/raw/segment-0001.tmraw
 ```
 
@@ -411,9 +411,9 @@ own machine. That is how the cadence lock-up was found.
 ### 7. The board itself
 
 ```bash
-systemctl stop trendmill-core
-/opt/trendmill/current/backend/.venv/bin/trendmill probe
-systemctl start trendmill-core
+systemctl stop treadmill-core
+/opt/treadmill/current/backend/.venv/bin/treadmill probe
+systemctl start treadmill-core
 ```
 
 Stop the service first: only one process may hold the interface, so `probe`
@@ -422,10 +422,10 @@ against a running console reports `Resource busy`, which means nothing is wrong.
 ### What to send when asking for help
 
 ```bash
-tar -czf /tmp/trendmill-debug.tar.gz \
-    /var/lib/trendmill/logs \
-    /etc/trendmill/trendmill.env \
-    /var/lib/trendmill/sessions/<the session that went wrong>
+tar -czf /tmp/treadmill-debug.tar.gz \
+    /var/lib/treadmill/logs \
+    /etc/treadmill/treadmill.env \
+    /var/lib/treadmill/sessions/<the session that went wrong>
 ```
 
 Plus the output of step 2. The logs and session files contain patient names, so
@@ -435,14 +435,14 @@ treat that archive the way you would the records themselves.
 
 | Symptom | Cause and fix |
 | --- | --- |
-| Screen blank, backend fine | `journalctl -u trendmill-kiosk -n 50`. Usually Chromium missing (Ubuntu: see below) or the compositor cannot get the seat — check `systemctl status seatd` |
-| "Waiting for board" | `trendmill probe`. Device absent → cable or hub; present but cannot open → udev rule not applied, reboot once |
+| Screen blank, backend fine | `journalctl -u treadmill-kiosk -n 50`. Usually Chromium missing (Ubuntu: see below) or the compositor cannot get the seat — check `systemctl status seatd` |
+| "Waiting for board" | `treadmill probe`. Device absent → cable or hub; present but cannot open → udev rule not applied, reboot once |
 | Channels all show the same value | The firmware's packet-packing bug, not the host. The console raises `channels_identical` itself |
 | Transfers drop after a while | USB autosuspend. The udev rule disables it for this device; confirm with `cat /sys/bus/usb/devices/*/power/control` |
 | Treadmill never found | Radio off (`rfkill list`), the treadmill paired to a phone, or missing Intel firmware — `dmesg \| grep -i bluetooth` |
 | Treadmill found, refuses commands | It did not grant control. Nothing else may hold it; the console shows this rather than failing silently |
 | A phantom keyboard types into the screen | The board's HID interface. The udev rule sets `LIBINPUT_IGNORE_DEVICE`; check the rule installed |
-| Service restarting in a loop | `journalctl -u trendmill-core -n 100`. Most often the data directory's ownership after a manual copy: `chown -R trendmill:trendmill /var/lib/trendmill` |
+| Service restarting in a loop | `journalctl -u treadmill-core -n 100`. Most often the data directory's ownership after a manual copy: `chown -R treadmill:treadmill /var/lib/treadmill` |
 
 ## Ubuntu
 

@@ -12,14 +12,14 @@ import asyncio
 
 import pytest
 
-from trendmill.treadmill import ftms
-from trendmill.treadmill.controller import (
+from treadmill.belt import ftms
+from treadmill.belt.controller import (
     ConnectionState,
     TreadmillController,
     TreadmillError,
     TreadmillEvent,
 )
-from trendmill.treadmill.link import SimulatedTreadmill, TreadmillUnavailable
+from treadmill.belt.link import SimulatedTreadmill, TreadmillUnavailable
 
 
 async def connected() -> tuple[TreadmillController, SimulatedTreadmill]:
@@ -264,7 +264,7 @@ async def test_a_moving_belt_is_running_even_if_the_console_did_not_start_it() -
 
 async def test_a_command_with_no_reply_gives_up_instead_of_hanging(monkeypatch) -> None:
     controller, machine = await connected()
-    monkeypatch.setattr("trendmill.treadmill.controller.RESPONSE_TIMEOUT_S", 0.05)
+    monkeypatch.setattr("treadmill.belt.controller.RESPONSE_TIMEOUT_S", 0.05)
 
     async def silent(payload: bytes) -> None:
         machine.written.append(payload)

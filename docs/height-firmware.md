@@ -58,7 +58,7 @@ already running is exactly what it has to reach.
 
 ## 2. The frame
 
-Eight bytes, little-endian. `backend/trendmill/height/protocol.py` is the
+Eight bytes, little-endian. `backend/treadmill/height/protocol.py` is the
 reference implementation, and its tests are worth reading as a spec.
 
 | offset | size | field |

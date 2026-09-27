@@ -38,7 +38,7 @@ export default function App() {
   // On a developer's laptop it would only be in the way, hence the toggle.
   const [keyboard, setKeyboard] = useState(() => {
     try {
-      const saved = localStorage.getItem("trendmill.keyboard");
+      const saved = localStorage.getItem("treadmill.keyboard");
       if (saved !== null) return saved === "on";
     } catch {
       // private mode, or storage blocked: fall back to the device
@@ -48,7 +48,7 @@ export default function App() {
   const toggleKeyboard = () => {
     setKeyboard((on) => {
       try {
-        localStorage.setItem("trendmill.keyboard", on ? "off" : "on");
+        localStorage.setItem("treadmill.keyboard", on ? "off" : "on");
       } catch {
         // not being able to remember the choice is not a reason to refuse it
       }
@@ -77,7 +77,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <h1>TrendMill <span className="muted">Console</span></h1>
+        <h1>TreadMill <span className="muted">Console</span></h1>
         <div className={`pill pill-${state}`} data-testid="link-state">
           {live ? STATE_TEXT[state] ?? state : socket === "connecting" ? "Connecting" : "Reconnecting to backend"}
         </div>

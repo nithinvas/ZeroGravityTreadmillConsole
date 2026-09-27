@@ -40,33 +40,33 @@ echo
 echo "==> Checking what was installed"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-id trendmill >/dev/null                        || fail "no trendmill user"
-getent group trendmill >/dev/null              || fail "no trendmill group"
-[ -f /etc/udev/rules.d/99-trendmill.rules ]    || fail "udev rule not installed"
-[ -f /etc/dbus-1/system.d/trendmill-bluetooth.conf ] || fail "bluetooth policy not installed"
-[ -f /etc/trendmill/trendmill.env ]            || fail "settings file not installed"
-[ -L /opt/trendmill/current ]                  || fail "current symlink missing"
-[ -d /var/lib/trendmill/sessions ]             || fail "data directory missing"
-[ -x /opt/trendmill/current/backend/.venv/bin/trendmill ] || fail "console not installed"
-[ -f /opt/trendmill/current/frontend/dist/index.html ]    || fail "UI not installed"
+id treadmill >/dev/null                        || fail "no treadmill user"
+getent group treadmill >/dev/null              || fail "no treadmill group"
+[ -f /etc/udev/rules.d/99-treadmill.rules ]    || fail "udev rule not installed"
+[ -f /etc/dbus-1/system.d/treadmill-bluetooth.conf ] || fail "bluetooth policy not installed"
+[ -f /etc/treadmill/treadmill.env ]            || fail "settings file not installed"
+[ -L /opt/treadmill/current ]                  || fail "current symlink missing"
+[ -d /var/lib/treadmill/sessions ]             || fail "data directory missing"
+[ -x /opt/treadmill/current/backend/.venv/bin/treadmill ] || fail "console not installed"
+[ -f /opt/treadmill/current/frontend/dist/index.html ]    || fail "UI not installed"
 
 # The rules must name the board, not some other device.
-grep -q '413d' /etc/udev/rules.d/99-trendmill.rules || fail "udev rule does not match the board"
-grep -q 'LIBINPUT_IGNORE_DEVICE' /etc/udev/rules.d/99-trendmill.rules \
+grep -q '413d' /etc/udev/rules.d/99-treadmill.rules || fail "udev rule does not match the board"
+grep -q 'LIBINPUT_IGNORE_DEVICE' /etc/udev/rules.d/99-treadmill.rules \
     || fail "the board's HID interface is not ignored"
 
-BIN=/opt/trendmill/current/backend/.venv/bin/trendmill
+BIN=/opt/treadmill/current/backend/.venv/bin/treadmill
 "$BIN" --version >/dev/null                    || fail "the console will not run"
 echo "    version: $("$BIN" --version)"
-echo "    python:  $(/opt/trendmill/current/backend/.venv/bin/python --version)"
+echo "    python:  $(/opt/treadmill/current/backend/.venv/bin/python --version)"
 
 echo
-echo "==> Starting the console as the trendmill user, exactly as the service does"
+echo "==> Starting the console as the treadmill user, exactly as the service does"
 # shellcheck disable=SC1091
-set -a; . /etc/trendmill/trendmill.env; set +a
-install -d -o trendmill -g trendmill /var/lib/trendmill
-setpriv --reuid=trendmill --regid=trendmill --clear-groups \
-    "$BIN" serve --data-dir "$TRENDMILL_DATA_DIR" --host 127.0.0.1 --port 8080 \
+set -a; . /etc/treadmill/treadmill.env; set +a
+install -d -o treadmill -g treadmill /var/lib/treadmill
+setpriv --reuid=treadmill --regid=treadmill --clear-groups \
+    "$BIN" serve --data-dir "$TREADMILL_DATA_DIR" --host 127.0.0.1 --port 8080 \
     --source sim --treadmill sim --log-level info > /tmp/console.log 2>&1 &
 
 for i in $(seq 1 45); do

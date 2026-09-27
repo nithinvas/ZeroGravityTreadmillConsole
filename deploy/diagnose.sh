@@ -33,7 +33,7 @@ done
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/diagnostics/${HOST}-$(date +%Y%m%d-%H%M%S)"
 SSH=(ssh -o ConnectTimeout=15 -o BatchMode=yes "${USER_AT}@${HOST}")
-REMOTE=/opt/trendmill/current/backend/.venv/bin/trendmill
+REMOTE=/opt/treadmill/current/backend/.venv/bin/treadmill
 
 mkdir -p "$OUT"
 echo "Collecting from $HOST into ${OUT#"$ROOT"/}"
@@ -57,27 +57,27 @@ grab sessions.json      'curl -s "localhost:8080/api/sessions?limit=25"'
 
 # The app's own structured log, and the journal for anything that went wrong
 # before the app's logging existed.
-grab trendmill.log      "$REMOTE logs -n 3000 --data-dir /var/lib/trendmill || true"
-grab journal.log        'journalctl -u trendmill-core -n 2000 --no-pager'
-grab journal-kiosk.log  'journalctl -u trendmill-kiosk -n 300 --no-pager'
+grab treadmill.log      "$REMOTE logs -n 3000 --data-dir /var/lib/treadmill || true"
+grab journal.log        'journalctl -u treadmill-core -n 2000 --no-pager'
+grab journal-kiosk.log  'journalctl -u treadmill-kiosk -n 300 --no-pager'
 
 # The machine itself: a fault that looks like software is sometimes a full disk,
 # a dropped USB device or a radio that never came up.
 grab system.txt 'echo "== uname =="; uname -a
 echo "== uptime =="; uptime
-echo "== release =="; readlink /opt/trendmill/current
-echo "== services =="; systemctl is-active trendmill-core trendmill-kiosk bluetooth
-echo "== disk =="; df -h /var/lib/trendmill /
+echo "== release =="; readlink /opt/treadmill/current
+echo "== services =="; systemctl is-active treadmill-core treadmill-kiosk bluetooth
+echo "== disk =="; df -h /var/lib/treadmill /
 echo "== memory =="; free -h
 echo "== usb =="; lsusb
 echo "== bluetooth =="; bluetoothctl show 2>/dev/null | head -5
 echo "== usb autosuspend =="; cat /sys/bus/usb/devices/*/power/control 2>/dev/null | sort | uniq -c
-echo "== config =="; cat /etc/trendmill/trendmill.env'
+echo "== config =="; cat /etc/treadmill/treadmill.env'
 
 if [ -n "$SESSION" ]; then
     echo "  fetching session $SESSION (including the raw capture)"
     mkdir -p "$OUT/session"
-    scp -q -o BatchMode=yes -r "${USER_AT}@${HOST}:/var/lib/trendmill/sessions/$SESSION/." \
+    scp -q -o BatchMode=yes -r "${USER_AT}@${HOST}:/var/lib/treadmill/sessions/$SESSION/." \
         "$OUT/session/" || echo "  session FAILED: is the id right?"
 fi
 
@@ -124,7 +124,7 @@ else:
 
 # Errors and warnings in the log, most frequent first: the shape of a fault is
 # usually clearer from what repeats than from any single line.
-log = out / "trendmill.log"
+log = out / "treadmill.log"
 if log.exists():
     import re
     # An event name looks like "usb.timeout" -- lowercase words joined by dots.

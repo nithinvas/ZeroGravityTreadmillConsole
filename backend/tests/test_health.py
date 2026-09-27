@@ -3,10 +3,10 @@ from __future__ import annotations
 import random
 
 from tests.conftest import buggy_firmware_packet, packet
-from trendmill.device.base import Transfer
-from trendmill.device.simulator import SimulatedBoard
-from trendmill.processor import StreamProcessor
-from trendmill.protocol.health import RateMeter, StreamHealth
+from treadmill.device.base import Transfer
+from treadmill.device.simulator import SimulatedBoard
+from treadmill.processor import StreamProcessor
+from treadmill.protocol.health import RateMeter, StreamHealth
 
 RATE = 976.5625
 PERIOD_NS = round(4 * 1e9 / RATE)

@@ -1,0 +1,56 @@
+[Unit]
+Description=TreadMill console (load-cell acquisition, gait metrics, treadmill control)
+Documentation=file:/opt/treadmill/current/docs/deployment.md
+# Bluetooth is wanted, not required: the console must still start and record over
+# USB on a machine whose radio is missing, disabled or broken.
+Wants=bluetooth.service
+After=bluetooth.service network.target
+# No start-rate limit: systemd would otherwise give up after 5 restarts in 10 s
+# and leave the clinic looking at a dead screen with no further attempts.
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+User=treadmill
+Group=treadmill
+SupplementaryGroups=bluetooth
+EnvironmentFile=/etc/treadmill/treadmill.env
+WorkingDirectory=/opt/treadmill/current/backend
+ExecStart=/opt/treadmill/current/backend/.venv/bin/treadmill serve \
+    --data-dir ${TREADMILL_DATA_DIR} \
+    --host ${TREADMILL_HOST} \
+    --port ${TREADMILL_PORT} \
+    --source ${TREADMILL_SOURCE} \
+    --treadmill ${TREADMILL_TREADMILL} \
+    --height ${TREADMILL_HEIGHT} \
+    --log-level ${TREADMILL_LOG_LEVEL} \
+    $TREADMILL_EXTRA_ARGS
+
+# A clinic must never be left looking at a dead screen: always come back, and
+# keep coming back, but slowly enough that a genuinely broken release is visible
+# in the logs rather than hidden behind a restart loop.
+Restart=always
+RestartSec=3
+
+# The recordings are the product of the session: give an interrupted one time to
+# write its summary and close its files before the process is killed.
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+# It reads one USB device, talks to BlueZ, and writes one directory.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/treadmill
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=no
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK AF_BLUETOOTH
+DeviceAllow=char-usb_device rw
+
+[Install]
+WantedBy=multi-user.target

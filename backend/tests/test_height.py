@@ -11,9 +11,9 @@ import time
 
 import pytest
 
-from trendmill.height import protocol
-from trendmill.height.controller import HeightController, HeightError
-from trendmill.height.link import SimulatedHeightMechanism
+from treadmill.height import protocol
+from treadmill.height.controller import HeightController, HeightError
+from treadmill.height.link import SimulatedHeightMechanism
 
 
 async def homed() -> tuple[HeightController, SimulatedHeightMechanism]:

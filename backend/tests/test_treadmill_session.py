@@ -14,12 +14,12 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from trendmill.api.app import create_app
-from trendmill.device.simulator import CELL_COUNTS_PER_KG, ZERO_OFFSETS, SimulatedBoard
-from trendmill.logs import setup_logging
-from trendmill.service import Console, ConsoleConfig
-from trendmill.treadmill.controller import TreadmillController
-from trendmill.treadmill.link import SimulatedTreadmill
+from treadmill.api.app import create_app
+from treadmill.belt.controller import TreadmillController
+from treadmill.belt.link import SimulatedTreadmill
+from treadmill.device.simulator import CELL_COUNTS_PER_KG, ZERO_OFFSETS, SimulatedBoard
+from treadmill.logs import setup_logging
+from treadmill.service import Console, ConsoleConfig
 
 RATE = 500.0
 
@@ -207,8 +207,8 @@ def test_disconnecting_leaves_the_console_usable(tmp_path: Path) -> None:
 
 def test_the_deck_cannot_be_raised_while_a_session_records(tmp_path: Path) -> None:
     """The one interaction between height and sessions that could hurt someone."""
-    from trendmill.height.controller import HeightController
-    from trendmill.height.link import SimulatedHeightMechanism
+    from treadmill.height.controller import HeightController
+    from treadmill.height.link import SimulatedHeightMechanism
 
     console, _ = console_with_treadmill(tmp_path)
     console.height = HeightController(SimulatedHeightMechanism())
@@ -237,8 +237,8 @@ def test_the_deck_cannot_be_raised_while_a_session_records(tmp_path: Path) -> No
 
 
 def test_a_height_request_needs_a_height_or_a_step(tmp_path: Path) -> None:
-    from trendmill.height.controller import HeightController
-    from trendmill.height.link import SimulatedHeightMechanism
+    from treadmill.height.controller import HeightController
+    from treadmill.height.link import SimulatedHeightMechanism
 
     console, _ = console_with_treadmill(tmp_path)
     console.height = HeightController(SimulatedHeightMechanism())

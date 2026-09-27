@@ -3,7 +3,7 @@
 #
 # Run this on the Mac (or in CI). It builds the UI, drops everything the
 # appliance does not need — node_modules, virtualenvs, test data, git history —
-# and writes dist/trendmill-<version>.tar.gz plus its SHA-256.
+# and writes dist/treadmill-<version>.tar.gz plus its SHA-256.
 #
 # The appliance never builds the UI itself: no Node, no npm, no network needed
 # for the part that is most likely to differ between machines.
@@ -12,10 +12,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/dist"
 
-VERSION="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$ROOT/backend/trendmill/__init__.py")"
-[ -n "$VERSION" ] || { echo "could not read __version__ from backend/trendmill/__init__.py" >&2; exit 1; }
+VERSION="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$ROOT/backend/treadmill/__init__.py")"
+[ -n "$VERSION" ] || { echo "could not read __version__ from backend/treadmill/__init__.py" >&2; exit 1; }
 STAMP="$(date -u +%Y%m%d%H%M)"
-NAME="trendmill-${VERSION}+${STAMP}"
+NAME="treadmill-${VERSION}+${STAMP}"
 
 echo "Building the UI..."
 (cd "$ROOT/frontend" && npm ci --no-audit --no-fund && npm run build)

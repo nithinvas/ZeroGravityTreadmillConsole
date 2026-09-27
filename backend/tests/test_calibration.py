@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from trendmill.calibration import solver
-from trendmill.calibration.profile import CalibrationProfile, Method
-from trendmill.calibration.store import CalibrationStore
-from trendmill.calibration.weighing import Weighing
+from treadmill.calibration import solver
+from treadmill.calibration.profile import CalibrationProfile, Method
+from treadmill.calibration.store import CalibrationStore
+from treadmill.calibration.weighing import Weighing
 
 TRUE_COUNTS_PER_KG = [-1_800.0, -1_900.0, -2_000.0, -2_100.0]
 # The September session (earlier firmware): zeros, and the 1,856 counts/kg measured then.

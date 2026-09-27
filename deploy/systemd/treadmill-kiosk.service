@@ -1,0 +1,30 @@
+[Unit]
+Description=TreadMill touch-screen kiosk (Cage + Chromium)
+After=treadmill-core.service systemd-user-sessions.service seatd.service
+Wants=treadmill-core.service seatd.service
+# One thing owns the screen.
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+
+[Service]
+Type=simple
+User=kiosk
+# A real login session, so logind grants the seat: without it the compositor
+# cannot open the display or the touch panel.
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+StandardInput=tty-force
+StandardOutput=journal
+StandardError=journal
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+Environment=XDG_SESSION_TYPE=wayland
+Environment=WLR_LIBINPUT_NO_DEVICES=1
+EnvironmentFile=/etc/treadmill/treadmill.env
+ExecStart=/opt/treadmill/start-kiosk.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

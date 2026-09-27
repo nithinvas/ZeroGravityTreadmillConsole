@@ -5,7 +5,7 @@ import logging
 
 import pytest
 
-from trendmill.logs import (
+from treadmill.logs import (
     JsonFormatter,
     WarningAggregator,
     get_logger,

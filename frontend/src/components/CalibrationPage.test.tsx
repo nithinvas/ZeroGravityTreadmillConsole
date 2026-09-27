@@ -9,7 +9,7 @@ const withDefaults: CalibrationInfo = {
   active: null,
   defaults: {
     present: true,
-    path: "/Users/x/TrendMill/calibration/defaults.json",
+    path: "/Users/x/TreadMill/calibration/defaults.json",
     zeros: [-553476.8, 405763.4, -549396.9, -63667.4],
     counts_per_kg: [-22442.38, -21816.8, -22406.59, -21849.17],
     firmware_bcd: "0100",
@@ -20,7 +20,7 @@ const withDefaults: CalibrationInfo = {
 };
 const withoutDefaults: CalibrationInfo = {
   ...withDefaults,
-  defaults: { present: false, path: "/Users/x/TrendMill/calibration/defaults.json" },
+  defaults: { present: false, path: "/Users/x/TreadMill/calibration/defaults.json" },
 };
 
 const snapshot = {

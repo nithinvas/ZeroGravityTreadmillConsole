@@ -7,10 +7,10 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from trendmill.api.app import create_app
-from trendmill.device.simulator import SimulatedBoard
-from trendmill.logs import setup_logging
-from trendmill.service import Console, ConsoleConfig
+from treadmill.api.app import create_app
+from treadmill.device.simulator import SimulatedBoard
+from treadmill.logs import setup_logging
+from treadmill.service import Console, ConsoleConfig
 
 RATE = 976.5625
 
@@ -86,4 +86,4 @@ def test_logs_are_available_live_and_levels_change(tmp_path: Path) -> None:
         assert c.get("/api/logging").json()["gait"] == "debug"
         assert c.post("/api/logging", json={"component": "x", "level": "debug"}).status_code == 400
 
-    assert (tmp_path / "logs" / "trendmill.jsonl").read_text().count("usb.connected") >= 1
+    assert (tmp_path / "logs" / "treadmill.jsonl").read_text().count("usb.connected") >= 1

@@ -12,10 +12,10 @@ from pathlib import Path
 
 import pytest
 
-from trendmill.device.simulator import CELL_COUNTS_PER_KG, ZERO_OFFSETS, SimulatedBoard
-from trendmill.gait.engine import GaitEngine, Step
-from trendmill.gait.filters import butterworth_delay_s, butterworth_lowpass
-from trendmill.gait.speed import SpeedTimeline
+from treadmill.device.simulator import CELL_COUNTS_PER_KG, ZERO_OFFSETS, SimulatedBoard
+from treadmill.gait.engine import GaitEngine, Step
+from treadmill.gait.filters import butterworth_delay_s, butterworth_lowpass
+from treadmill.gait.speed import SpeedTimeline
 
 RATE = 976.5625
 US = 1_000_000
@@ -144,6 +144,8 @@ def test_speed_change_flags_transition_steps_and_lengths_follow() -> None:
 
 # ---- real recordings ---------------------------------------------------------
 
+# The Android app's repository, which keeps its original (misspelled) name:
+# renaming this console did not rename that one.
 DATA = Path.home() / "projects/TrendMillMonitor/docs/80Hz-DataCollection"
 
 

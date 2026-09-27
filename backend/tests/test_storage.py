@@ -5,10 +5,10 @@ import threading
 from pathlib import Path
 
 from tests.conftest import numbered
-from trendmill.device.base import StateChange, Transfer
-from trendmill.device.replay import ReplaySource
-from trendmill.storage.raw_format import RawHeader, RawWriter, iter_records, sha256_of
-from trendmill.storage.recorder import Recorder
+from treadmill.device.base import StateChange, Transfer
+from treadmill.device.replay import ReplaySource
+from treadmill.storage.raw_format import RawHeader, RawWriter, iter_records, sha256_of
+from treadmill.storage.recorder import Recorder
 
 HEADER = RawHeader(1, 0x413D, 0x2107, 0x0100, 976.5625, 0)
 

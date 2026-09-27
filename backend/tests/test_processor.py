@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from tests.conftest import numbered, packet
-from trendmill.device.base import Transfer
-from trendmill.processor import StreamProcessor
-from trendmill.protocol.health import StreamHealth
+from treadmill.device.base import Transfer
+from treadmill.processor import StreamProcessor
+from treadmill.protocol.health import StreamHealth
 
 RATE = 976.5625
 

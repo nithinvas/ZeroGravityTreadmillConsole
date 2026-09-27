@@ -38,7 +38,7 @@ step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 step "Checking $HOST"
 "${SSH[@]}" true || { echo "Cannot reach $HOST over SSH." >&2; exit 1; }
 
-BEFORE="$("${SSH[@]}" 'readlink /opt/trendmill/current 2>/dev/null || echo none')"
+BEFORE="$("${SSH[@]}" 'readlink /opt/treadmill/current 2>/dev/null || echo none')"
 echo "    running now: $(basename "$BEFORE")"
 
 if "${SSH[@]}" 'curl -s --max-time 5 localhost:8080/api/sessions/current' 2>/dev/null \
@@ -54,12 +54,12 @@ echo "    no session recording"
 # ---- 2. build ---------------------------------------------------------------
 
 step "Building (runs the full test suite)"
-"$ROOT/deploy/build-release.sh" >/tmp/trendmill-build.log 2>&1 || {
+"$ROOT/deploy/build-release.sh" >/tmp/treadmill-build.log 2>&1 || {
     echo "Build or tests failed. Last lines:" >&2
-    tail -25 /tmp/trendmill-build.log >&2
+    tail -25 /tmp/treadmill-build.log >&2
     exit 1
 }
-TARBALL="$(ls -t "$ROOT"/dist/trendmill-*.tar.gz | head -1)"
+TARBALL="$(ls -t "$ROOT"/dist/treadmill-*.tar.gz | head -1)"
 NAME="$(basename "$TARBALL" .tar.gz)"
 echo "    $NAME  ($(du -h "$TARBALL" | cut -f1))"
 
@@ -83,17 +83,17 @@ step "Provisioning"
 
 step "Verifying"
 sleep 5
-AFTER="$("${SSH[@]}" 'readlink /opt/trendmill/current')"
+AFTER="$("${SSH[@]}" 'readlink /opt/treadmill/current')"
 [ "$AFTER" != "$BEFORE" ] || {
     echo "The release did not change: still $(basename "$AFTER")" >&2; exit 1; }
 echo "    release   $(basename "$AFTER")"
 
 # The running process must be the new one. An install that leaves the old
 # process serving is the failure this whole step exists to catch.
-RUNNING="$("${SSH[@]}" 'systemctl show -p ExecMainPID --value trendmill-core \
+RUNNING="$("${SSH[@]}" 'systemctl show -p ExecMainPID --value treadmill-core \
     | xargs -I{} readlink -f /proc/{}/exe 2>/dev/null || true')"
-"${SSH[@]}" "systemctl is-active --quiet trendmill-core" \
-    || { echo "trendmill-core is not running. journalctl -u trendmill-core -n 50" >&2; exit 1; }
+"${SSH[@]}" "systemctl is-active --quiet treadmill-core" \
+    || { echo "treadmill-core is not running. journalctl -u treadmill-core -n 50" >&2; exit 1; }
 echo "    service   active"
 
 for i in $(seq 1 20); do
@@ -116,4 +116,4 @@ _ = "$RUNNING"
 
 step "Done"
 echo "$HOST is running $(basename "$AFTER")."
-echo "Watch it settle with:  ssh ${USER_AT}@${HOST} 'journalctl -u trendmill-core -f'"
+echo "Watch it settle with:  ssh ${USER_AT}@${HOST} 'journalctl -u treadmill-core -f'"

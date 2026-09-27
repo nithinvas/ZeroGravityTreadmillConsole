@@ -3,7 +3,7 @@ from __future__ import annotations
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from trendmill.protocol.sample_clock import SampleClock
+from treadmill.protocol.sample_clock import SampleClock
 
 NOMINAL_US = 1_000_000 / 976.5625  # 1024 us
 

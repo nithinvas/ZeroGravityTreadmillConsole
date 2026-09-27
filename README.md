@@ -47,7 +47,7 @@ can see the warning it raises.
 1. **Check the board directly**, without the server:
 
    ```bash
-   cd backend && uv run trendmill probe
+   cd backend && uv run treadmill probe
    ```
 
    It lists USB devices, the board's interfaces and endpoints, hex-dumps the
@@ -68,11 +68,11 @@ can see the warning it raises.
 3. **Record** a labelled test from the Recording panel, then check it:
 
    ```bash
-   cd backend && uv run trendmill inspect ~/TrendMill/recordings/<recording-id>
+   cd backend && uv run treadmill inspect ~/TreadMill/recordings/<recording-id>
    ```
 
    ```bash
-   ./run.sh --source replay --replay ~/TrendMill/recordings/<recording-id>
+   ./run.sh --source replay --replay ~/TreadMill/recordings/<recording-id>
    ```
 
 ## Treadmill control (Bluetooth)
@@ -183,16 +183,16 @@ centre or a corner, or run a walker, so calibration can be rehearsed without the
 
 ## Logs
 
-Every component logs structured JSON to `~/TrendMill/logs/trendmill.jsonl`
-(`/var/lib/trendmill/logs` on the N100), and to the terminal. The page shows a
+Every component logs structured JSON to `~/TreadMill/logs/treadmill.jsonl`
+(`/var/lib/treadmill/logs` on the N100), and to the terminal. The page shows a
 live log panel with level and component filters. From a terminal:
 
 ```bash
-cd backend && uv run trendmill logs -f
+cd backend && uv run treadmill logs -f
 ```
 
 ```bash
-cd backend && uv run trendmill logs -f --level warning --component usb
+cd backend && uv run treadmill logs -f --level warning --component usb
 ```
 
 A health line every 10 s reports the rate, counters, CPU and memory. Log levels
@@ -205,7 +205,7 @@ cd backend && uv run pytest
 ```
 
 ```bash
-cd backend && uv run ruff check trendmill tests && uv run mypy trendmill
+cd backend && uv run ruff check treadmill tests && uv run mypy treadmill
 ```
 
 ```bash
@@ -219,12 +219,12 @@ second terminal, `cd frontend && npm run dev`, then open <http://127.0.0.1:5173>
 
 ```bash
 ./deploy/build-release.sh            # on the Mac: builds, tests, makes a tarball
-# copy dist/trendmill-*.tar.gz to the N100, then there:
+# copy dist/treadmill-*.tar.gz to the N100, then there:
 sudo ./deploy/provision.sh           # packages, users, device rules, services, kiosk
 ```
 
 `provision.sh` is idempotent: run it again to upgrade, and sessions, calibration
-and `/etc/trendmill/trendmill.env` are left alone. The install path is tested on
+and `/etc/treadmill/treadmill.env` are left alone. The install path is tested on
 a clean Debian 13 and Ubuntu 24.04 with `./deploy/test-provision.sh` (needs
 Docker).
 
@@ -235,17 +235,17 @@ Full runbook, including BIOS settings, verification and troubleshooting:
 
 | Path | What |
 | --- | --- |
-| `backend/trendmill/protocol/` | Packet decoder, sample clock, stream health and the firmware-bug check |
-| `backend/trendmill/device/` | Packet sources: USB board, simulator, replay |
-| `backend/trendmill/storage/` | Raw recording format (every transfer, untouched) and recorder |
-| `backend/trendmill/calibration/` | Profiles and defaults, the four-position solver, storage, live weighing |
-| `backend/trendmill/treadmill/` | FTMS protocol, the BLE link, a simulated treadmill, and belt control |
-| `backend/trendmill/height/` | Belt-height command frames, the USB command link, a simulated mechanism |
+| `backend/treadmill/protocol/` | Packet decoder, sample clock, stream health and the firmware-bug check |
+| `backend/treadmill/device/` | Packet sources: USB board, simulator, replay |
+| `backend/treadmill/storage/` | Raw recording format (every transfer, untouched) and recorder |
+| `backend/treadmill/calibration/` | Profiles and defaults, the four-position solver, storage, live weighing |
+| `backend/treadmill/treadmill/` | FTMS protocol, the BLE link, a simulated treadmill, and belt control |
+| `backend/treadmill/height/` | Belt-height command frames, the USB command link, a simulated mechanism |
 | `tools/main.c` | Height-controller firmware (STM32). `tools/test/run.sh` tests its logic on a desktop |
 | `tools/height-command.py` | Sends height commands over a serial adapter, bypassing the USB relay |
-| `backend/trendmill/processor.py`, `service.py` | Transfers to samples; the running console |
-| `backend/trendmill/api/` | REST, WebSocket live state and logs, UI hosting |
-| `backend/trendmill/cli.py` | `trendmill serve`, `probe`, `inspect`, `logs` |
+| `backend/treadmill/processor.py`, `service.py` | Transfers to samples; the running console |
+| `backend/treadmill/api/` | REST, WebSocket live state and logs, UI hosting |
+| `backend/treadmill/cli.py` | `treadmill serve`, `probe`, `inspect`, `logs` |
 | `frontend/` | React + TypeScript touch UI |
 | `deploy/` | Release builder, provisioning script, udev and systemd units, kiosk |
 | `docs/design.md` | Phase 1 design |
@@ -256,8 +256,8 @@ Full runbook, including BIOS settings, verification and troubleshooting:
 
 | | macOS | N100 (Linux) |
 | --- | --- | --- |
-| Recordings | `~/TrendMill/recordings/` | `/var/lib/trendmill/recordings/` |
-| Calibration | `~/TrendMill/calibration/` | `/var/lib/trendmill/calibration/` |
-| Logs | `~/TrendMill/logs/` | `/var/lib/trendmill/logs/` and the journal |
+| Recordings | `~/TreadMill/recordings/` | `/var/lib/treadmill/recordings/` |
+| Calibration | `~/TreadMill/calibration/` | `/var/lib/treadmill/calibration/` |
+| Logs | `~/TreadMill/logs/` | `/var/lib/treadmill/logs/` and the journal |
 
-Override with `TRENDMILL_DATA_DIR` or `--data-dir`.
+Override with `TREADMILL_DATA_DIR` or `--data-dir`.

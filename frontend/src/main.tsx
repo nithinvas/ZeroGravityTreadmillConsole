@@ -4,7 +4,7 @@ import App from "./App";
 import "./styles.css";
 
 // Uncaught UI errors reach the backend log as component "ui", so they show up in
-// `trendmill logs` and the journal rather than vanishing inside the kiosk.
+// `treadmill logs` and the journal rather than vanishing inside the kiosk.
 function report(message: string) {
   void fetch("/api/client-log", {
     method: "POST",

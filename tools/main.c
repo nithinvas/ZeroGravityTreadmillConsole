@@ -131,7 +131,7 @@ typedef enum
 #define DIR_UP           GPIO_PIN_SET
 #define DIR_DOWN         GPIO_PIN_RESET
 
-/* Command protocol. Mirrors backend/trendmill/height/protocol.py. */
+/* Command protocol. Mirrors backend/treadmill/height/protocol.py. */
 #define CMD_MAGIC_0      0x48    // 'H'
 #define CMD_MAGIC_1      0x54    // 'T'
 #define CMD_FRAME_SIZE   8

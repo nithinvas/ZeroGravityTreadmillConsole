@@ -5,7 +5,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from tests.conftest import buggy_firmware_packet, numbered, packet
-from trendmill.protocol.decoder import decode_packet, encode_packet, in_adc_range
+from treadmill.protocol.decoder import decode_packet, encode_packet, in_adc_range
 
 
 def test_decodes_four_samples_of_four_channels_in_order() -> None:
