@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { CalibrationPage } from "./components/CalibrationPage";
 import { ChannelGrid } from "./components/ChannelGrid";
 import { HeightPanel } from "./components/HeightPanel";
-import { LogPanel } from "./components/LogPanel";
 import { RecordingPanel } from "./components/RecordingPanel";
 import { SessionPage } from "./components/SessionPage";
 import { SessionsPage } from "./components/SessionsPage";
@@ -137,7 +136,6 @@ export default function App() {
             <div className="col-side" hidden={tab === "sessions"}>
               {snapshot.simulator && <SimulatorPanel mode={snapshot.simulator} />}
               <StreamStats snapshot={snapshot} />
-              <LogPanel />
             </div>
           </div>
         </main>

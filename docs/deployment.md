@@ -237,6 +237,200 @@ The session folders are the record; the SQLite index is rebuilt from them.
 sudo tar -czf /media/usb/trendmill-$(date +%F).tar.gz -C /var/lib trendmill
 ```
 
+## The support loop: diagnose, fix, deploy
+
+Three commands, run from your machine, with nobody technical at the clinic.
+
+### 1. Get everything off the machine
+
+```bash
+./deploy/diagnose.sh zerogravity
+```
+
+Pulls the console's own view of itself, its logs, the journal, the machine's
+health and the recent session list into `diagnostics/<host>-<timestamp>/`, then
+prints a verdict:
+
+```
+Verdict
+-------
+  board        streaming  (Streaming)
+  sample rate  976.08 Hz   (expected about 977)
+  counters     all clean
+  calibration  missing
+  treadmill    idle
+  height       not homed
+
+  Most frequent problems in the log:
+        2x  WARNING usb.timeout
+        1x  ERROR usb.disconnected
+```
+
+Grouping the log by event rather than reading it line by line is usually what
+identifies the fault: one `usb.disconnected` is a glance, two hundred is a
+cable.
+
+When the clinic can name the session that went wrong, take its raw capture too:
+
+```bash
+./deploy/diagnose.sh zerogravity --session 20260919-193116-37b5e3f8
+```
+
+### 2. Reproduce it at your desk
+
+The raw capture is every USB transfer, untouched. Replay it and the console runs
+against the real signal at the real rate:
+
+```bash
+./run.sh --source replay --replay diagnostics/<...>/session/raw/segment-0001.tmraw
+```
+
+Now it is an ordinary bug on your own machine, with a debugger, and you can
+write a failing test before you fix anything.
+
+### 3. Fix it and ship it
+
+```bash
+./deploy/deploy.sh zerogravity
+```
+
+Builds (which runs the full suite and refuses to package a failing release),
+copies, provisions, and then checks the machine actually came back on the new
+version — not just that provisioning said it finished.
+
+**It refuses to upgrade a machine that is mid-session**, because restarting the
+console would save that session as "interrupted" and lose the rest of the
+patient's walk. Upgrade between patients.
+
+### What this needs
+
+SSH to the machine from wherever you are. On the same network that is its IP; from
+anywhere it means a mesh VPN such as Tailscale, installed with
+`provision.sh --with-tailscale`. Everything above is plain SSH either way.
+
+`diagnostics/` is gitignored: it holds patient names and recordings, and should
+be handled like the records themselves.
+
+## Debugging by hand
+
+Work down this list. Each step narrows where the fault is, and most problems are
+identified by the second one.
+
+### 1. Is the console running?
+
+```bash
+systemctl status trendmill-core
+```
+
+`active (running)` with no recent restarts. If it is restarting in a loop, skip
+to the journal in step 5 — the app's own log will not exist yet.
+
+### 2. What does the console think is happening?
+
+```bash
+curl -s localhost:8080/api/status | python3 -m json.tool
+```
+
+One command that answers most questions:
+
+| Field | What to look for |
+| --- | --- |
+| `link.state` | `streaming` is healthy; `waiting` means no board |
+| `stream.rate_hz` | About 976. A lower number means dropped transfers |
+| `stream.counters` | `short_transfers`, `timeouts`, `queue_overflows` should stay at 0 |
+| `warnings` | The console's own diagnosis, in plain words |
+| `calibration.status` | `missing` explains "why is the weight blank" |
+| `treadmill`, `height` | Connected, in control, homed |
+
+### 3. What happened just before?
+
+```bash
+trendmill logs -n 200
+```
+
+(On the appliance: `/opt/trendmill/current/backend/.venv/bin/trendmill logs`.)
+Every line is a structured event — a name and fields, not prose — so a whole
+class of problem can be pulled out directly:
+
+```bash
+trendmill logs -n 500 --level warning        # only things that went wrong
+trendmill logs -n 500 --component usb        # just the board
+trendmill logs -n 500 --component ble        # just the treadmill
+```
+
+Components: `usb`, `decoder`, `clock`, `stream`, `calibration`, `gait`, `ble`,
+`height`, `session`, `storage`, `api`, `ui`.
+
+There is a `stream.health` line every 10 seconds carrying rate, counters, CPU
+and memory — the fastest way to see whether a fault built up gradually or
+arrived all at once.
+
+### 4. Watch it happen
+
+```bash
+trendmill logs -f --component height
+```
+
+Leave it running and reproduce the problem. **Raise the detail without
+restarting anything** — a restart would lose the state you are trying to
+diagnose:
+
+```bash
+curl -s -XPOST localhost:8080/api/logging -H 'content-type: application/json' \
+     -d '{"component":"gait","level":"debug"}'
+```
+
+That is deliberately not persisted: a restart returns it to `info`, so nobody
+leaves a clinic machine logging at debug forever.
+
+### 5. When the service will not start
+
+```bash
+journalctl -u trendmill-core -n 100 --no-pager
+```
+
+The journal catches crashes *before* the app's logging is up — a bad config, a
+missing file, a permissions problem. The app's own log cannot show you those.
+
+### 6. Reproduce it away from the clinic
+
+This is the one that saves a trip. **Every session records every USB transfer,
+untouched**, in `raw/segment-*.tmraw`. Copy the session folder off the machine
+and replay it on a laptop:
+
+```bash
+scp -r root@<machine>:/var/lib/trendmill/sessions/<id> .
+trendmill inspect <id>/raw/segment-0001.tmraw
+./run.sh --source replay --replay <id>/raw/segment-0001.tmraw
+```
+
+The console then runs against the real signal, at the real rate, with the real
+calibration — so a gait or decoding fault can be chased with a debugger on your
+own machine. That is how the cadence lock-up was found.
+
+### 7. The board itself
+
+```bash
+systemctl stop trendmill-core
+/opt/trendmill/current/backend/.venv/bin/trendmill probe
+systemctl start trendmill-core
+```
+
+Stop the service first: only one process may hold the interface, so `probe`
+against a running console reports `Resource busy`, which means nothing is wrong.
+
+### What to send when asking for help
+
+```bash
+tar -czf /tmp/trendmill-debug.tar.gz \
+    /var/lib/trendmill/logs \
+    /etc/trendmill/trendmill.env \
+    /var/lib/trendmill/sessions/<the session that went wrong>
+```
+
+Plus the output of step 2. The logs and session files contain patient names, so
+treat that archive the way you would the records themselves.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |

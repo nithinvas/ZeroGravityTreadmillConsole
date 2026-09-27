@@ -16,6 +16,10 @@ frontend/dist/
 # rebuilt on demand, so they do not belong in history.
 dist/
 
+# Diagnostics pulled off a clinic machine: logs and sessions with patient
+# names in them. Never versioned.
+diagnostics/
+
 # Data. Recordings are gait traces tied to a named person: they stay on the
 # machine that made them.
 data/
