@@ -1,4 +1,4 @@
-# TrendMill Console
+# TreadMill Console
 
 Backend and touch UI for the zero-gravity treadmill: reads the ADS131M04 load-cell
 board over USB, records every transfer, shows live diagnostics, and (from
