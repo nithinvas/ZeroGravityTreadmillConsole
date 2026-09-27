@@ -1,0 +1,24 @@
+# The load-cell board, and the one thing about it that bites on Linux.
+#
+# 413d:2107 exposes two interfaces. Interface 1 is the bulk data endpoint this
+# console reads. Interface 0 declares itself a USB boot keyboard — left alone,
+# Linux registers it as a keyboard sitting in front of the kiosk, able to inject
+# keystrokes into the running session. It is ignored here.
+
+# Readable by the trendmill group, so the service never runs as root.
+SUBSYSTEM=="usb", ATTR{idVendor}=="413d", ATTR{idProduct}=="2107", \
+    MODE="0660", GROUP="trendmill", TAG+="uaccess"
+
+# USB autosuspend off for this device. Suspending a board that streams 244
+# transfers a second produces dropped transfers and reconnects that look like a
+# firmware fault, and it is a failure the Mac cannot reproduce.
+SUBSYSTEM=="usb", ATTR{idVendor}=="413d", ATTR{idProduct}=="2107", \
+    TEST=="power/control", ATTR{power/control}="on"
+SUBSYSTEM=="usb", ATTR{idVendor}=="413d", ATTR{idProduct}=="2107", \
+    TEST=="power/autosuspend", ATTR{power/autosuspend}="-1"
+
+# The HID interface: never an input device.
+SUBSYSTEM=="input", ATTRS{idVendor}=="413d", ATTRS{idProduct}=="2107", \
+    ENV{LIBINPUT_IGNORE_DEVICE}="1"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="413d", ATTRS{idProduct}=="2107", \
+    MODE="0660", GROUP="trendmill"

@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Build output: release tarballs are produced by deploy/build-release.sh and
+# rebuilt on demand, so they do not belong in history.
+dist/
+
+# Data. Recordings are gait traces tied to a named person: they stay on the
+# machine that made them.
+data/
+test data/
+*.tmraw
+*.tmraw.sha256
+
+.DS_Store
