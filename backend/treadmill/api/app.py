@@ -138,6 +138,10 @@ class StaffIn(BaseModel):
     role: str = "therapist"
 
 
+class PinChange(BaseModel):
+    pin: str = Field(min_length=4, max_length=8)
+
+
 class SignIn(BaseModel):
     staff_id: str
     pin: str = Field(min_length=1, max_length=16)
@@ -346,6 +350,26 @@ def create_app(console: Console, ui_dir: Path | None = None) -> FastAPI:
             return console.people.add_staff(body.name, body.pin, body.role).as_dict()
         except PeopleError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
+
+    @app.delete("/api/staff/{staff_id}")
+    def remove_staff(staff_id: str) -> dict[str, str]:
+        try:
+            console.people.remove_staff(staff_id)
+        except PeopleError as error:
+            # 409, not 404: "the last technician" is a refusal, not a missing thing.
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        log_event(log, logging.WARNING, "api.staff_removed", "A staff member was removed",
+                  staff_id=staff_id)
+        return {"removed": staff_id}
+
+    @app.post("/api/staff/{staff_id}/pin")
+    def reset_pin(staff_id: str, body: PinChange) -> dict[str, str]:
+        try:
+            console.people.set_pin(staff_id, body.pin)
+        except PeopleError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        log_event(log, logging.INFO, "api.pin_changed", "A PIN was changed", staff_id=staff_id)
+        return {"changed": staff_id}
 
     @app.post("/api/sign-in")
     def sign_in(body: SignIn) -> dict[str, Any]:

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getJson, postJson } from "../api";
+import { FirstRunSetup } from "./StaffScreen";
 import { Keypad, initials } from "./parts";
 
 export interface Staff {
@@ -59,17 +60,9 @@ export function LockScreen({ onSignedIn, onStopEverything }: {
         {staff === null && <p className="muted">Loading…</p>}
 
         {staff !== null && staff.length === 0 && (
-          <div className="prod-card" style={{ marginTop: 24, textAlign: "left" }}>
-            <strong>No staff are set up on this machine yet.</strong>
-            <p className="muted" style={{ marginBottom: 0 }}>
-              A technician adds the first account. Until then the console cannot record who ran
-              a session, so sign-in is skipped.
-            </p>
-            <button className="prod-btn primary" style={{ marginTop: 16 }}
-              onClick={() => onSignedIn({ id: "", name: "Unassigned", role: "technician", created_at: "" })}>
-              Continue without signing in
-            </button>
-          </div>
+          <FirstRunSetup onCreated={() => {
+            getJson<Staff[]>("/api/staff").then(setStaff, () => undefined);
+          }} />
         )}
 
         <div className="prod-staff">

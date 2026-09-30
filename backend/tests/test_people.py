@@ -192,3 +192,33 @@ def test_patients_and_sign_in_through_the_api(tmp_path: Path) -> None:
 
         assert c.get("/api/patients/PT-9999").status_code == 404
         assert c.post("/api/staff", json={"name": "X", "pin": "1111"}).status_code == 400
+
+
+def test_staff_can_be_onboarded_and_removed_through_the_api(tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from treadmill.api.app import create_app
+    from treadmill.device.simulator import SimulatedBoard
+    from treadmill.logs import setup_logging
+    from treadmill.service import Console, ConsoleConfig
+
+    setup_logging(None, console=False)
+    console = Console(SimulatedBoard(rate_hz=500.0), ConsoleConfig(tmp_path, 500.0))
+    with TestClient(create_app(console)) as c:
+        tech = c.post("/api/staff", json={"name": "Tech", "pin": "9921",
+                                          "role": "technician"}).json()
+        new = c.post("/api/staff", json={"name": "Dr. Mehta", "pin": "3355"}).json()
+        assert {s["name"] for s in c.get("/api/staff").json()} == {"Tech", "Dr. Mehta"}
+
+        # A forgotten PIN is reset, not recovered: nothing stores the old one.
+        assert c.post(f"/api/staff/{new['id']}/pin", json={"pin": "8080"}).status_code == 200
+        assert c.post("/api/sign-in", json={"staff_id": new["id"], "pin": "3355"}).status_code == 401
+        assert c.post("/api/sign-in", json={"staff_id": new["id"], "pin": "8080"}).status_code == 200
+        assert c.post(f"/api/staff/{new['id']}/pin", json={"pin": "1111"}).status_code == 400
+
+        assert c.delete(f"/api/staff/{new['id']}").status_code == 200
+        # The last technician stays: removing them locks the clinic out of its
+        # own machine, with no way back that does not involve a database editor.
+        refused = c.delete(f"/api/staff/{tech['id']}")
+        assert refused.status_code == 409
+        assert "only technician" in refused.json()["detail"]

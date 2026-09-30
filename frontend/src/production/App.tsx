@@ -7,6 +7,7 @@ import { HomeScreen, type Patient } from "./HomeScreen";
 import { LockScreen, type Staff } from "./LockScreen";
 import { ReportScreen } from "./ReportScreen";
 import { SessionScreen } from "./SessionScreen";
+import { StaffScreen } from "./StaffScreen";
 import { TopBar } from "./parts";
 import { Wizard, type WizardResult } from "./Wizard";
 import "./theme.css";
@@ -27,6 +28,7 @@ type Screen =
   | { at: "wizard"; patient: Patient | null }
   | { at: "session"; bws: number }
   | { at: "report"; id: string }
+  | { at: "staff" }
   | { at: "service" };
 
 export default function ProductionApp() {
@@ -41,7 +43,8 @@ export default function ProductionApp() {
 
   // A session already running when the screen loads — after a reload, or a
   // browser that was restarted mid-session — must be picked up, not lost.
-  if (snapshot?.session && screen.at !== "session" && screen.at !== "service" && staff) {
+  if (snapshot?.session && screen.at !== "session" && screen.at !== "service"
+      && screen.at !== "staff" && staff) {
     setScreen({ at: "session", bws: 0 });
   }
 
@@ -69,15 +72,18 @@ export default function ProductionApp() {
     );
   }
 
-  const serviceButton = staff?.role === "technician" ? (
-    <button className="prod-btn ghost" onClick={() => setScreen({ at: "service" })}>Service</button>
+  const technicianTools = staff?.role === "technician" && screen.at !== "session" ? (
+    <>
+      <button className="prod-btn ghost" onClick={() => setScreen({ at: "staff" })}>Staff</button>
+      <button className="prod-btn ghost" onClick={() => setScreen({ at: "service" })}>Service</button>
+    </>
   ) : null;
 
   return (
     <div className="prod">
       <TopBar snapshot={snapshot} right={
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {serviceButton}
+          {technicianTools}
           {staff && screen.at !== "session" && (
             <button className="prod-btn ghost" onClick={() => { setStaff(null); setScreen({ at: "lock" }); }}>
               {staff.name} · Sign out
@@ -131,6 +137,10 @@ export default function ProductionApp() {
             No session is running.{" "}
             <button className="prod-btn" onClick={() => setScreen({ at: "home" })}>Back to home</button>
           </div>
+        )}
+
+        {screen.at === "staff" && staff && (
+          <StaffScreen me={staff} onDone={() => setScreen({ at: "home" })} />
         )}
 
         {screen.at === "report" && (
