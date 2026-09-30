@@ -23,7 +23,12 @@ done
 # --incognito       nothing about a patient survives a restart
 # --noerrdialogs …  never interrupt a session with a browser dialog
 # --touch-events    the panel is a touch screen, not a mouse
-exec cage -d -- "$CHROMIUM" \
+# -s allows Ctrl+Alt+F2 to reach a text console. Without it the kiosk is
+# genuinely inescapable: an engineer standing at a machine with no network has
+# no way to a shell short of rebooting into GRUB and editing the kernel command
+# line. The risk it adds is small — a patient would need a keyboard plugged in,
+# and the appliance normally has none.
+exec cage -d -s -- "$CHROMIUM" \
     --kiosk \
     --incognito \
     --noerrdialogs \

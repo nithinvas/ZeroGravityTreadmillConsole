@@ -26,6 +26,7 @@ from treadmill.chart import ChartFeed
 from treadmill.device.base import LinkState, PacketSource, StateChange, Transfer
 from treadmill.height.controller import HeightController
 from treadmill.logs import get_logger, log_event
+from treadmill.people.store import PeopleStore
 from treadmill.processor import StreamProcessor
 from treadmill.protocol.constants import CHANNEL_NAMES, SAMPLES_PER_PACKET
 from treadmill.protocol.health import StreamHealth, finite_or_none
@@ -71,6 +72,9 @@ class Console:
         self._weighing_segment: int | None = None
         self.chart = ChartFeed()
         self.sessions = SessionManager(config.data_dir / "sessions")
+        # Patients and staff. Separate from the session index, which is a
+        # throwaway cache rebuilt from folders; this one *is* the record.
+        self.people = PeopleStore(config.data_dir / "people.sqlite")
         self.link_state = LinkState.WAITING
         self.link_detail = "Starting"
         self.device: dict[str, Any] = {}

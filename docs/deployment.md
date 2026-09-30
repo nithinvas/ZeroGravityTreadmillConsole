@@ -435,6 +435,7 @@ treat that archive the way you would the records themselves.
 
 | Symptom | Cause and fix |
 | --- | --- |
+| Stuck in the kiosk, no way to a shell | **Ctrl+Alt+F2** for a text console. If that is blocked (a release before VT switching was enabled), reboot, press `e` at GRUB and append `systemd.unit=multi-user.target` to the `linux` line, then Ctrl+X |
 | Screen blank, backend fine | `journalctl -u treadmill-kiosk -n 50`. Usually Chromium missing (Ubuntu: see below) or the compositor cannot get the seat — check `systemctl status seatd` |
 | "Waiting for board" | `treadmill probe`. Device absent → cable or hub; present but cannot open → udev rule not applied, reboot once |
 | Channels all show the same value | The firmware's packet-packing bug, not the host. The console raises `channels_identical` itself |

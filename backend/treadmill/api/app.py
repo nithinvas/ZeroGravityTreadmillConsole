@@ -24,6 +24,7 @@ from treadmill.calibration import solver
 from treadmill.calibration.profile import CalibrationProfile, Method
 from treadmill.height.controller import HeightError
 from treadmill.logs import COMPONENTS, LIVE_BUFFER, get_logger, log_event, set_component_level
+from treadmill.people.store import ROLES, PeopleError
 from treadmill.service import Console
 from treadmill.sessions.manager import ACTIVITIES, SessionDetails
 
@@ -108,6 +109,38 @@ class HeightRequest(BaseModel):
 
     mm: float | None = Field(default=None, ge=0, le=1000)
     steps: int | None = Field(default=None, ge=-100, le=100)
+
+
+class PatientIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    id: str | None = Field(default=None, max_length=32)
+    age: int | None = Field(default=None, ge=0, le=130)
+    height_cm: float | None = Field(default=None, gt=0, le=300)
+    weight_kg: float | None = Field(default=None, gt=0, le=400)
+    diagnosis: str = Field(default="", max_length=200)
+    therapist_id: str = Field(default="", max_length=64)
+    notes: str = Field(default="", max_length=2000)
+
+
+class PatientEdit(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    age: int | None = Field(default=None, ge=0, le=130)
+    height_cm: float | None = Field(default=None, gt=0, le=300)
+    weight_kg: float | None = Field(default=None, gt=0, le=400)
+    diagnosis: str | None = Field(default=None, max_length=200)
+    therapist_id: str | None = Field(default=None, max_length=64)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class StaffIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    pin: str = Field(min_length=4, max_length=8)
+    role: str = "therapist"
+
+
+class SignIn(BaseModel):
+    staff_id: str
+    pin: str = Field(min_length=1, max_length=16)
 
 
 class SessionStop(BaseModel):
@@ -266,6 +299,65 @@ def create_app(console: Console, ui_dir: Path | None = None) -> FastAPI:
         if body.percent is None:
             raise HTTPException(status_code=400, detail="Send either an incline or a number of steps.")
         return await _belt(console.treadmill.set_incline(body.percent))
+
+    # ---- patients and staff ------------------------------------------------
+
+    @app.get("/api/patients")
+    def patients(q: str = "", limit: int = Query(50, ge=1, le=200)) -> list[dict[str, Any]]:
+        return [p.as_dict() for p in console.people.search_patients(q, limit)]
+
+    @app.get("/api/patients/recent")
+    def recent_patients(limit: int = Query(8, ge=1, le=50)) -> list[dict[str, Any]]:
+        return [p.as_dict() for p in console.people.recent_patients(limit)]
+
+    @app.post("/api/patients")
+    def add_patient(body: PatientIn) -> dict[str, Any]:
+        try:
+            return console.people.add_patient(**body.model_dump()).as_dict()
+        except PeopleError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+
+    @app.get("/api/patients/{patient_id}")
+    def patient(patient_id: str) -> dict[str, Any]:
+        found = console.people.patient(patient_id)
+        if found is None:
+            raise HTTPException(status_code=404, detail="No such patient.")
+        # Their history comes from the session index, which already searches by id.
+        history = console.sessions.index.search(patient_id, None, None, 50, 0)
+        return found.as_dict() | {"sessions": history}
+
+    @app.patch("/api/patients/{patient_id}")
+    def edit_patient(patient_id: str, body: PatientEdit) -> dict[str, Any]:
+        try:
+            return console.people.update_patient(patient_id, **body.model_dump()).as_dict()
+        except PeopleError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/api/staff")
+    def staff() -> list[dict[str, Any]]:
+        """Names for the lock screen. PINs never leave the store."""
+        return [s.as_dict() for s in console.people.staff()]
+
+    @app.post("/api/staff")
+    def add_staff(body: StaffIn) -> dict[str, Any]:
+        if body.role not in ROLES:
+            raise HTTPException(status_code=400, detail=f"Role must be one of {', '.join(ROLES)}.")
+        try:
+            return console.people.add_staff(body.name, body.pin, body.role).as_dict()
+        except PeopleError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+
+    @app.post("/api/sign-in")
+    def sign_in(body: SignIn) -> dict[str, Any]:
+        try:
+            who = console.people.check_pin(body.staff_id, body.pin)
+        except PeopleError as error:
+            # 401, not 400: the UI tells these apart, and a wrong PIN is not a
+            # malformed request.
+            raise HTTPException(status_code=401, detail=str(error)) from error
+        log_event(log, logging.INFO, "api.sign_in", f"{who.name} signed in",
+                  staff=who.name, role=who.role)
+        return who.as_dict()
 
     # ---- belt height -----------------------------------------------------
 

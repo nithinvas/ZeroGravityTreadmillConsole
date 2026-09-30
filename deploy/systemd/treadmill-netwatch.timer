@@ -1,0 +1,12 @@
+[Unit]
+Description=Check connectivity every five minutes
+
+[Timer]
+# Not OnBootSec=0: the network needs a moment after boot, and checking before it
+# has had one only produces a false failure.
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,7 @@
+[Unit]
+Description=Keep the appliance reachable (development units only)
+Documentation=file:/opt/treadmill/current/docs/deployment.md
+
+[Service]
+Type=oneshot
+ExecStart=/opt/treadmill/netwatch.sh

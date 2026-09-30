@@ -104,13 +104,16 @@ for i in $(seq 1 20); do
     sleep 2
 done
 
+# Plain concatenation, not f-strings: the quoting has to survive the shell, and
+# a backslash inside an f-string expression is a syntax error.
 "${SSH[@]}" 'curl -s localhost:8080/api/status' | python3 -c '
 import json, sys
 s = json.load(sys.stdin)
-print(f"    version   {s[\"app\"][\"version\"]}")
-print(f"    board     {s[\"link\"][\"state\"]} ({s[\"link\"][\"detail\"] or \"ok\"})")
+link = s["link"]
+print("    version   " + s["app"]["version"])
+print("    board     " + link["state"] + " (" + (link["detail"] or "ok") + ")")
 for w in s.get("warnings", []):
-    print(f"    WARNING   {w[\"message\"]}")
+    print("    WARNING   " + w["message"])
 '
 _ = "$RUNNING"
 

@@ -24,6 +24,8 @@ PORT=8080
 RELEASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WITH_KIOSK=1
 WITH_SERVICES=1
+WITH_TAILSCALE=0
+TAILSCALE_KEY=""
 PYTHON_VERSION=3.12
 
 usage() {
@@ -34,6 +36,13 @@ Usage: sudo ./deploy/provision.sh [options]
                    Use this on a headless unit, or to service one over SSH.
   --no-services    Install everything but do not touch systemd. Used by the
                    container test, where there is no init to talk to.
+  --with-tailscale Install Tailscale and a connectivity watchdog, so the machine
+                   can be reached and recovered from anywhere. FOR DEVELOPMENT
+                   UNITS ONLY -- a clinic install must not pass this: it is a
+                   permanent inbound path to a machine holding patient records,
+                   and the watchdog will reboot the machine to restore it.
+  --tailscale-key K  Authenticate unattended with this auth key. Without it,
+                   `tailscale up` prints a URL to open in a browser.
   --port N         Port the console listens on (default 8080, localhost only).
   --release-dir D  Install from D instead of the directory this script is in.
   -h, --help       This text.
@@ -43,6 +52,8 @@ EOF
 while [ $# -gt 0 ]; do
     case "$1" in
         --no-kiosk) WITH_KIOSK=0 ;;
+        --with-tailscale) WITH_TAILSCALE=1 ;;
+        --tailscale-key) TAILSCALE_KEY="$2"; WITH_TAILSCALE=1; shift ;;
         --no-services) WITH_SERVICES=0 ;;
         --port) PORT="$2"; shift ;;
         --release-dir) RELEASE_DIR="$(cd "$2" && pwd)"; shift ;;
@@ -305,6 +316,54 @@ if [ "$WITH_KIOSK" = 1 ]; then
     systemctl enable treadmill-kiosk.service
     # Same again, and it also reloads Chromium onto the new UI.
     systemctl restart treadmill-kiosk.service
+fi
+
+# ---------------------------------------------------- remote access (dev only)
+
+if [ "$WITH_TAILSCALE" = 1 ]; then
+    step "Installing remote access (development units only)"
+
+    if ! command -v tailscale >/dev/null 2>&1; then
+        curl -fsSL https://tailscale.com/install.sh | sh
+    fi
+    systemctl enable --now tailscaled
+
+    if tailscale status >/dev/null 2>&1; then
+        note "already on a tailnet: $(tailscale status --peers=false 2>/dev/null | head -1)"
+    elif [ -n "$TAILSCALE_KEY" ]; then
+        tailscale up --authkey "$TAILSCALE_KEY" --hostname "$(hostname)" --ssh
+        note "authenticated with the supplied key"
+    else
+        note "run 'tailscale up --ssh' and open the URL it prints to finish."
+    fi
+
+    # The Realtek card's power saving is what made this machine unreachable for
+    # seconds at a time; on a unit nobody can walk up to, that is not a
+    # trade-off worth having.
+    cat > /etc/systemd/system/treadmill-wifi-power.service <<'UNIT'
+[Unit]
+Description=Disable Wi-Fi power saving (keeps a remote machine reachable)
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'for i in $(ls /sys/class/net | grep "^wl"); do iw dev "$i" set power_save off || true; done'
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+    apt-get install -y -qq iw >/dev/null 2>&1 || true
+    systemctl enable --now treadmill-wifi-power.service >/dev/null 2>&1 || true
+
+    install -m 0755 "$RELEASE_DIR/deploy/netwatch.sh" "$APP_ROOT/netwatch.sh"
+    install -m 0644 "$RELEASE_DIR/deploy/systemd/treadmill-netwatch.service" \
+        /etc/systemd/system/treadmill-netwatch.service
+    install -m 0644 "$RELEASE_DIR/deploy/systemd/treadmill-netwatch.timer" \
+        /etc/systemd/system/treadmill-netwatch.timer
+    systemctl daemon-reload
+    systemctl enable --now treadmill-netwatch.timer
+    note "watchdog: bounces the network after 20 min offline, reboots after 40"
 fi
 
 # ---------------------------------------------------------------- report

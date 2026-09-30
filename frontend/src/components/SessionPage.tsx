@@ -4,6 +4,7 @@ import { fmtDuration, fmtNum } from "../format";
 import type { Snapshot, SessionLive, SessionSummary, TreadmillState } from "../types";
 import { LiveChart } from "./LiveChart";
 import { HeightPanel } from "./HeightPanel";
+import { LiveGaitChart } from "./LiveGaitChart";
 import { TreadmillPanel } from "./TreadmillPanel";
 
 const ACTIVITIES = ["walk", "jog", "run"];
@@ -259,6 +260,8 @@ function ActiveSession({ session, treadmill, onFinished }: {
         )}
         {error && <p className="error" role="alert">{error}</p>}
       </section>
+
+      <LiveGaitChart gait={g} />
 
       <LiveChart />
 
