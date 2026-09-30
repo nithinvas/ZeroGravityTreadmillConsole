@@ -62,7 +62,20 @@ export function StaffScreen({ me, onDone }: { me: Staff; onDone: () => void }) {
                 {s.name}
                 {s.id === me.id && <span className="pid">you</span>}
               </div>
-              <div className="meta" style={{ textTransform: "capitalize" }}>{s.role}</div>
+              <div className="prod-chips" style={{ marginTop: 4 }}>
+                {(["therapist", "technician"] as const).map((r) => (
+                  <button key={r} className={`prod-chip${s.role === r ? " on" : ""}`}
+                    disabled={s.role === r || (s.id === me.id && r !== me.role)}
+                    title={s.id === me.id && r !== me.role
+                      ? "You cannot change your own role while signed in" : ""}
+                    onClick={() => void run(
+                      () => postJson(`/api/staff/${s.id}/role`, { role: r }),
+                      `${s.name} is now a ${r}.`,
+                    )}>
+                    {r}
+                  </button>
+                ))}
+              </div>
             </div>
             <button className="prod-btn ghost" onClick={() => setResetting(s)}>Reset PIN</button>
             <button className="prod-btn ghost" style={{ color: "var(--danger)" }}
@@ -106,7 +119,8 @@ export function StaffScreen({ me, onDone }: { me: Staff; onDone: () => void }) {
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
           A therapist runs sessions. A technician can also calibrate the machine and manage this
           list — a wrong coefficient makes every weight the machine reports wrong, so that is kept
-          away from the clinical screens.
+          away from the clinical screens. Tap the role on anybody in the list above to change
+          it — they keep their id, so their past sessions stay theirs.
         </p>
       </div>
 

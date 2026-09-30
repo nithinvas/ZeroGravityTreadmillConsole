@@ -222,3 +222,60 @@ def test_staff_can_be_onboarded_and_removed_through_the_api(tmp_path: Path) -> N
         refused = c.delete(f"/api/staff/{tech['id']}")
         assert refused.status_code == 409
         assert "only technician" in refused.json()["detail"]
+
+
+def test_role_can_be_changed_without_losing_the_person(tmp_path):
+    store = PeopleStore(tmp_path / "p.db")
+    boss = store.add_staff("Dr. Patel", "4417", "technician")
+    junior = store.add_staff("Dr. Rao", "5528")
+    promoted = store.set_role(junior.id, "technician")
+    assert promoted.id == junior.id
+    assert promoted.role == "technician"
+    assert store.staff_member(junior.id).role == "technician"
+    # And back down again, now that somebody else holds the role.
+    assert store.set_role(boss.id, "therapist").role == "therapist"
+
+
+def test_the_last_technician_cannot_demote_themselves(tmp_path):
+    store = PeopleStore(tmp_path / "p.db")
+    only = store.add_staff("Dr. Patel", "4417", "technician")
+    store.add_staff("Dr. Rao", "5528")
+    with pytest.raises(PeopleError):
+        store.set_role(only.id, "therapist")
+    assert store.staff_member(only.id).role == "technician"
+
+
+def test_role_must_be_a_known_one(tmp_path):
+    store = PeopleStore(tmp_path / "p.db")
+    who = store.add_staff("Dr. Patel", "4417", "technician")
+    with pytest.raises(PeopleError):
+        store.set_role(who.id, "admin")
+
+
+def test_role_change_through_the_api(tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from treadmill.api.app import create_app
+    from treadmill.device.simulator import SimulatedBoard
+    from treadmill.logs import setup_logging
+    from treadmill.service import Console, ConsoleConfig
+
+    setup_logging(None, console=False)
+    console = Console(SimulatedBoard(rate_hz=500.0), ConsoleConfig(tmp_path, 500.0))
+    with TestClient(create_app(console)) as c:
+        boss = c.post("/api/staff", json={
+            "name": "Dr. Patel", "pin": "4417", "role": "technician"}).json()
+        junior = c.post("/api/staff", json={"name": "Dr. Rao", "pin": "5528"}).json()
+
+        promoted = c.post(f"/api/staff/{junior['id']}/role", json={"role": "technician"})
+        assert promoted.status_code == 200
+        assert promoted.json() == junior | {"role": "technician"}
+
+        # Now that there are two, stepping the first one down is allowed.
+        assert c.post(f"/api/staff/{boss['id']}/role", json={"role": "therapist"}).status_code == 200
+        # But the survivor is stuck with it.
+        stuck = c.post(f"/api/staff/{junior['id']}/role", json={"role": "therapist"})
+        assert stuck.status_code == 409
+
+        assert c.post(f"/api/staff/{junior['id']}/role", json={"role": "admin"}).status_code == 409
+        assert c.post("/api/staff/nobody/role", json={"role": "therapist"}).status_code == 409

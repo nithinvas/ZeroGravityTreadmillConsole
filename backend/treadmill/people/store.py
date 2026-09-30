@@ -227,6 +227,33 @@ class PeopleStore:
                        (_hash_pin(pin, salt), salt, staff_id))
         self._attempts.pop(staff_id, None)
 
+    def set_role(self, staff_id: str, role: str) -> Staff:
+        """Promote a therapist, or step a technician back down.
+
+        Somebody is hired, somebody is trained up, somebody moves on. Without
+        this the only way to change a role is to delete the person and add them
+        again under a new id, which quietly detaches them from every session
+        they ever ran.
+        """
+        if role not in ROLES:
+            raise PeopleError(f"Role must be one of {', '.join(ROLES)}.")
+        with self._connect() as db:
+            row = db.execute("SELECT id, name, role, created_at FROM staff WHERE id = ?",
+                             (staff_id,)).fetchone()
+            if row is None:
+                raise PeopleError("No such staff member.")
+            if row["role"] == ROLE_TECHNICIAN and role != ROLE_TECHNICIAN:
+                others = db.execute(
+                    "SELECT COUNT(*) AS n FROM staff WHERE role = ? AND id != ?",
+                    (ROLE_TECHNICIAN, staff_id),
+                ).fetchone()["n"]
+                # Same trap as removing the last technician: nobody left who can
+                # calibrate the machine or hand the role back.
+                if others == 0:
+                    raise PeopleError("This is the only technician. Promote somebody else first.")
+            db.execute("UPDATE staff SET role = ? WHERE id = ?", (role, staff_id))
+        return Staff(row["id"], row["name"], role, row["created_at"])
+
     def remove_staff(self, staff_id: str) -> None:
         with self._connect() as db:
             remaining = db.execute(

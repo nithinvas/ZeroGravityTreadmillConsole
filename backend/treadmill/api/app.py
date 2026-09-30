@@ -142,6 +142,10 @@ class PinChange(BaseModel):
     pin: str = Field(min_length=4, max_length=8)
 
 
+class RoleChange(BaseModel):
+    role: str
+
+
 class SignIn(BaseModel):
     staff_id: str
     pin: str = Field(min_length=1, max_length=16)
@@ -370,6 +374,17 @@ def create_app(console: Console, ui_dir: Path | None = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(error)) from error
         log_event(log, logging.INFO, "api.pin_changed", "A PIN was changed", staff_id=staff_id)
         return {"changed": staff_id}
+
+    @app.post("/api/staff/{staff_id}/role")
+    def set_role(staff_id: str, body: RoleChange) -> dict[str, Any]:
+        try:
+            who = console.people.set_role(staff_id, body.role)
+        except PeopleError as error:
+            # 409 for the same reason as removal: refusing to strand the clinic.
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        log_event(log, logging.WARNING, "api.role_changed", "A staff role was changed",
+                  staff_id=staff_id, role=who.role)
+        return who.as_dict()
 
     @app.post("/api/sign-in")
     def sign_in(body: SignIn) -> dict[str, Any]:
