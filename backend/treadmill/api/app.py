@@ -359,6 +359,23 @@ def create_app(console: Console, ui_dir: Path | None = None) -> FastAPI:
                   staff=who.name, role=who.role)
         return who.as_dict()
 
+    @app.get("/api/stats/today")
+    def stats_today() -> dict[str, Any]:
+        """The four tiles on the home screen."""
+        import datetime as dt
+
+        today = dt.date.today().isoformat()
+        rows = console.sessions.index.search("", today, today, 500, 0)
+        durations = [r["duration_s"] for r in rows if r.get("duration_s")]
+        patients, staff = console.people.count()
+        return {
+            "sessions_today": len(rows),
+            "avg_duration_s": round(sum(durations) / len(durations), 1) if durations else 0.0,
+            "patients": patients,
+            "staff": staff,
+            "uptime_s": round(console.health.rate.elapsed_s, 0),
+        }
+
     # ---- belt height -----------------------------------------------------
 
     @app.get("/api/height")

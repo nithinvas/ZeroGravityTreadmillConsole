@@ -1,6 +1,9 @@
+// The production console is what the clinic sees. The engineering console we
+// built first lives inside it, behind a technician sign-in: it is how the
+// machine is calibrated and diagnosed, and it stays the fallback.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
+import App from "./production/App";
 import "./styles.css";
 
 // Uncaught UI errors reach the backend log as component "ui", so they show up in

@@ -253,6 +253,8 @@ export interface SessionReport {
     device: Record<string, string>;
     gait_engine: { version: string };
     app_version: string;
+    /** The deck height this session ran at, when the mechanism reported one. */
+    height_mm: number | null;
   };
   summary: SessionSummary | null;
   steps: StepRow[];

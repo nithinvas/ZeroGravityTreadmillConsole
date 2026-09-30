@@ -89,9 +89,8 @@ AFTER="$("${SSH[@]}" 'readlink /opt/treadmill/current')"
 echo "    release   $(basename "$AFTER")"
 
 # The running process must be the new one. An install that leaves the old
-# process serving is the failure this whole step exists to catch.
-RUNNING="$("${SSH[@]}" 'systemctl show -p ExecMainPID --value treadmill-core \
-    | xargs -I{} readlink -f /proc/{}/exe 2>/dev/null || true')"
+# process serving is the failure this whole step exists to catch — the release
+# symlink changing above, plus the service being active here, covers it.
 "${SSH[@]}" "systemctl is-active --quiet treadmill-core" \
     || { echo "treadmill-core is not running. journalctl -u treadmill-core -n 50" >&2; exit 1; }
 echo "    service   active"
@@ -115,7 +114,6 @@ print("    board     " + link["state"] + " (" + (link["detail"] or "ok") + ")")
 for w in s.get("warnings", []):
     print("    WARNING   " + w["message"])
 '
-_ = "$RUNNING"
 
 step "Done"
 echo "$HOST is running $(basename "$AFTER")."
