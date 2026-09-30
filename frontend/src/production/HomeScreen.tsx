@@ -24,9 +24,12 @@ interface Today {
 }
 
 /** Where a therapist lands: start someone, or pick up where a patient left off. */
-export function HomeScreen({ onNewPatient, onPickPatient }: {
+export function HomeScreen({ onNewPatient, onPickPatient, onManageStaff, onService }: {
   onNewPatient: () => void;
   onPickPatient: (p: Patient) => void;
+  /** Technicians only: both are undefined for a therapist. */
+  onManageStaff?: () => void;
+  onService?: () => void;
 }) {
   const [recent, setRecent] = useState<Patient[] | null>(null);
   const [today, setToday] = useState<Today | null>(null);
@@ -63,6 +66,26 @@ export function HomeScreen({ onNewPatient, onPickPatient }: {
             <small>{searching ? "Showing search" : "Search by name or ID"}</small>
           </button>
         </div>
+
+        {(onManageStaff || onService) && (
+          <div style={{ marginTop: 22 }}>
+            <div className="prod-eyebrow">Technician</div>
+            <div style={{ display: "grid", gap: 10 }}>
+              {onManageStaff && (
+                <button className="prod-btn" style={{ justifyContent: "flex-start", textAlign: "left" }}
+                  onClick={onManageStaff}>
+                  Staff — add a therapist, reset a PIN
+                </button>
+              )}
+              {onService && (
+                <button className="prod-btn" style={{ justifyContent: "flex-start", textAlign: "left" }}
+                  onClick={onService}>
+                  Service — calibration and diagnostics
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="prod-tiles">
           <div className="prod-tile">

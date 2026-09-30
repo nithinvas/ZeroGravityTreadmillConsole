@@ -38,10 +38,14 @@
 /* ---------------------------------------------------------------- top bar */
 
 .prod-top {
-  display: flex; align-items: center; gap: 16px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: nowrap;
   padding: 12px 22px; border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
+/* Nothing in the bar may wrap or shrink away: a button that moves depending on
+   the window width cannot be described to somebody over the phone. */
+.prod-top > * { flex: none; white-space: nowrap; }
+.prod-top .prod-btn { min-height: 40px; padding: 0 14px; }
 .prod-brand { display: flex; align-items: center; gap: 12px; }
 .prod-mark {
   width: 34px; height: 34px; border-radius: 50%;
@@ -52,7 +56,12 @@
   display: block; color: var(--accent); letter-spacing: .14em;
   font-size: 10px; font-weight: 700;
 }
-.prod-brand strong { font-size: 17px; font-weight: 700; }
+.prod-brand strong { font-size: 17px; font-weight: 700; white-space: nowrap; }
+@media (max-width: 1180px) {
+  .prod-brand strong { font-size: 14px; }
+  .prod-clock .time { font-size: 20px; }
+  .prod-clock .date { display: none; }
+}
 .prod-clock { margin-left: auto; text-align: right; }
 .prod-clock .time {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

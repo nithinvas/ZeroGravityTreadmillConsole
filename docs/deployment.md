@@ -304,6 +304,19 @@ patient's walk. Upgrade between patients.
 
 ### What this needs
 
+**Seeing the UI from your own machine.** The console binds to localhost on the
+appliance, so reach it through the SSH tunnel:
+
+```bash
+ssh -L 8080:127.0.0.1:8080 root@<machine>
+```
+
+Leave that running and open `http://localhost:8080`. Write **`127.0.0.1`, not
+`localhost`**: on the appliance `localhost` resolves to IPv6 `::1`, the console
+binds IPv4 only, and the forward then fails for some connections with
+`connect failed: dial tcp [::1]:8080` — intermittently, which is more confusing
+than not working at all.
+
 SSH to the machine from wherever you are. On the same network that is its IP; from
 anywhere it means a mesh VPN such as Tailscale, installed with
 `provision.sh --with-tailscale`. Everything above is plain SSH either way.

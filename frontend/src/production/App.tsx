@@ -110,6 +110,8 @@ export default function ProductionApp() {
           <HomeScreen
             onNewPatient={() => setScreen({ at: "wizard", patient: null })}
             onPickPatient={(p) => setScreen({ at: "wizard", patient: p })}
+            onManageStaff={staff?.role === "technician" ? () => setScreen({ at: "staff" }) : undefined}
+            onService={staff?.role === "technician" ? () => setScreen({ at: "service" }) : undefined}
           />
         )}
 
