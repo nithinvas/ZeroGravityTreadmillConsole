@@ -188,6 +188,35 @@ export interface SessionLive {
   walking_s: number;
   distance_m: number;
   recent_steps: StepRow[];
+  feet: FeetLive;
+}
+
+/** One instant of the per-foot decomposition. */
+export interface FootSample {
+  t: number;
+  total: number;
+  /** null where the hand-over could not be resolved: the chart draws a gap. */
+  left: number | null;
+  right: number | null;
+  phase: "left" | "right" | "double" | "flight" | "unavailable";
+  confidence: number;
+}
+
+export interface FeetLive {
+  quality: "good" | "fair" | "unusable";
+  /** Why it is not good, in words a therapist can act on. */
+  reason: string;
+  body_weight_kg: number;
+  samples: FootSample[];
+}
+
+/** The same curves, read back from the session record. */
+export interface FeetTrace {
+  t: number[];
+  left: (number | null)[];
+  right: (number | null)[];
+  total: number[];
+  phase: string[];
 }
 
 export interface Spread {
@@ -259,6 +288,7 @@ export interface SessionReport {
   summary: SessionSummary | null;
   steps: StepRow[];
   trace: { time_s: number[]; tl_kg: number[]; tr_kg: number[]; br_kg: number[]; bl_kg: number[]; total_kg: number[] };
+  feet: FeetTrace;
 }
 
 export type CalibrationState = "ok" | "missing" | "firmware_mismatch";

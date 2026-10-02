@@ -4,6 +4,7 @@ import { LineChart } from "../components/LineChart";
 import { CELL_COLOURS } from "../components/LiveChart";
 import { fmtDuration, fmtNum } from "../format";
 import type { SessionReport, Spread } from "../types";
+import { FootForceChart } from "./components/FootForceChart";
 
 /**
  * What the therapist reads afterwards, and what goes in the patient's file.
@@ -106,6 +107,8 @@ export function ReportScreen({ id, onDone }: { id: string; onDone: () => void })
           series={[{ name: "per step", colour: "#19e5a5", dots: true, points: stepLength }]} />
       </div>
 
+      <FeetCard report={report} />
+
       <div className="prod-card">
         <div className="prod-eyebrow">Load on the deck</div>
         <LineChart yLabel="kg" markers={markers} height={240} series={[
@@ -151,4 +154,55 @@ function localTime(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+
+/**
+ * Per-foot load across the whole session.
+ *
+ * These are the same curves that were on the screen during the session -- the
+ * console wrote down what it computed live rather than recomputing it here, so
+ * the record cannot disagree with what the therapist watched.
+ */
+function FeetCard({ report }: { report: SessionReport }) {
+  const feet = report.feet;
+  if (!feet || feet.t.length < 2) return null;
+
+  const points = feet.t.map((t, i) => ({ t, left: feet.left[i], right: feet.right[i] }));
+  const resolved = points.filter((p) => p.left !== null);
+  // Mean total load over the session is the weight the deck actually carried,
+  // which is the right reference even when body-weight support took some of it.
+  const bw = Math.max(1, Math.round(
+    feet.total.reduce((a, b) => a + b, 0) / Math.max(1, feet.total.length)));
+
+  const peak = (side: "left" | "right") =>
+    resolved.reduce((m, p) => Math.max(m, p[side] ?? 0), 0);
+  const pl = peak("left");
+  const pr = peak("right");
+  const asym = pl + pr > 0 ? (200 * Math.abs(pl - pr)) / (pl + pr) : 0;
+
+  return (
+    <div className="prod-card">
+      <div className="prod-eyebrow">Left / right load</div>
+      <FootForceChart points={points} bodyWeightKg={bw} height={260} showAll />
+      <div style={{ display: "flex", gap: 26, marginTop: 14, flexWrap: "wrap" }}>
+        <Figure label="Peak, left" value={`${pl.toFixed(1)} kg`} />
+        <Figure label="Peak, right" value={`${pr.toFixed(1)} kg`} />
+        <Figure label="Difference" value={`${asym.toFixed(1)}%`} />
+      </div>
+      <p className="muted" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
+        Estimated by splitting one deck between two feet, not measured with two
+        force plates. Gaps are moments that could not be resolved.
+      </p>
+    </div>
+  );
+}
+
+function Figure({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 20, fontWeight: 700 }}>{value}</div>
+      <div className="muted" style={{ fontSize: 12 }}>{label}</div>
+    </div>
+  );
 }

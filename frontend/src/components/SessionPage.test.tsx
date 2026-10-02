@@ -37,6 +37,7 @@ const live: SessionLive = {
   walking_s: 84,
   distance_m: 78.4,
   recent_steps: [],
+  feet: { quality: "unusable", reason: "", body_weight_kg: 0, samples: [] },
 };
 
 it("will not start a session without coefficients", () => {

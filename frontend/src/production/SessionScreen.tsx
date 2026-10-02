@@ -3,6 +3,7 @@ import { postJson } from "../api";
 import { fmtDuration, fmtNum } from "../format";
 import { LiveChart } from "../components/LiveChart";
 import { LiveGaitChart } from "../components/LiveGaitChart";
+import { FootForceChart } from "./components/FootForceChart";
 import type { SessionLive, Snapshot } from "../types";
 
 /**
@@ -19,7 +20,7 @@ export function SessionScreen({ snapshot, session, bwsPercent, onFinished }: {
   bwsPercent: number;
   onFinished: (id: string) => void;
 }) {
-  const [tab, setTab] = useState<"live" | "gait">("live");
+  const [tab, setTab] = useState<"live" | "gait" | "feet">("live");
   const [error, setError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const g = session.gait;
@@ -114,6 +115,9 @@ export function SessionScreen({ snapshot, session, bwsPercent, onFinished }: {
         <button className={`prod-tab${tab === "gait" ? " on" : ""}`} onClick={() => setTab("gait")}>
           Gait analysis
         </button>
+        <button className={`prod-tab${tab === "feet" ? " on" : ""}`} onClick={() => setTab("feet")}>
+          Left / right load
+        </button>
         <span className="muted" style={{ marginLeft: "auto", alignSelf: "center", fontSize: 12.5 }}>
           {g.prompt ?? `${g.steps_accepted} of ${g.steps_total} steps accepted`}
         </span>
@@ -121,7 +125,9 @@ export function SessionScreen({ snapshot, session, bwsPercent, onFinished }: {
 
       <div style={{ padding: 18 }}>
         {error && <div className="prod-error" role="alert">{error}</div>}
-        {tab === "live" ? <LiveChart /> : <LiveGaitChart gait={g} />}
+        {tab === "live" && <LiveChart />}
+        {tab === "gait" && <LiveGaitChart gait={g} />}
+        {tab === "feet" && <LiveFeet session={session} />}
 
         <div style={{ display: "flex", gap: 14, marginTop: 18 }}>
           <div className="grow" style={{ flex: 1 }} />
@@ -142,6 +148,47 @@ function Metric({ label, value, unit, tone = "" }: {
       <div className="l">{label}</div>
       <div className="v">{value}</div>
       <div className="u">{unit}</div>
+    </div>
+  );
+}
+
+
+/**
+ * What each foot is carrying, live.
+ *
+ * The decomposition holds a sample back until the next foot has landed, so this
+ * trails real time by about half a second. That is deliberate: it is the same
+ * curve the report will show, rather than a provisional one that gets revised.
+ */
+function LiveFeet({ session }: { session: SessionLive }) {
+  const feet = session.feet;
+  if (feet.quality === "unusable") {
+    return (
+      <div className="prod-empty">
+        <strong>Left / right load is not available.</strong>
+        <div className="muted" style={{ marginTop: 6, fontSize: 13 }}>
+          {feet.reason || "Waiting for enough walking to tell the two feet apart."}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      {feet.quality === "fair" && (
+        <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>
+          {feet.reason} — read the shape, not the exact numbers.
+        </div>
+      )}
+      <FootForceChart
+        points={feet.samples}
+        bodyWeightKg={feet.body_weight_kg}
+        seconds={10}
+        height={190}
+      />
+      <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+        Estimated from one deck, not two force plates. A break in a line is a
+        moment the console could not resolve, not a moment the foot was unloaded.
+      </p>
     </div>
   );
 }

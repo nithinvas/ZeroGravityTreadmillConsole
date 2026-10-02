@@ -21,6 +21,7 @@ import json
 import logging
 import time
 import uuid
+from collections import deque
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, TextIO
@@ -28,6 +29,7 @@ from typing import Any, TextIO
 from treadmill import __version__
 from treadmill.calibration.profile import CalibrationProfile
 from treadmill.device.base import Transfer
+from treadmill.gait.decompose import StreamingDecomposer
 from treadmill.gait.engine import GaitEngine, Step
 from treadmill.gait.speed import SpeedTimeline
 from treadmill.logs import get_logger, log_event
@@ -41,6 +43,13 @@ log = get_logger("session")
 
 US_PER_S = 1_000_000
 TRACE_INTERVAL_US = 100_000  # 10 points per second in trace.csv
+#: Per-foot curves are written 25 times a second. The decomposition itself runs
+#: at the full sample rate -- it has to, the hand-over between feet lasts about a
+#: tenth of a second -- but the curve only has to be drawn, and 25 Hz is already
+#: smoother than any screen will show. Storing the result rather than the raw
+#: cells keeps a session to a few hundred kB instead of several MB, and means the
+#: report shows exactly what was computed live rather than a recomputation of it.
+FEET_INTERVAL_US = 40_000
 STEP_FIELDS = (
     "time_s",
     "side",
@@ -120,6 +129,13 @@ class ActiveSession:
         self._trace_file: TextIO = open(directory / "trace.csv", "w", newline="", encoding="utf-8")  # noqa: SIM115
         self._trace_csv = csv.writer(self._trace_file)
         self._trace_csv.writerow(("time_s", "tl_kg", "tr_kg", "br_kg", "bl_kg", "total_kg"))
+        self.feet = StreamingDecomposer()
+        self._feet_file: TextIO = open(directory / "feet.csv", "w", newline="", encoding="utf-8")  # noqa: SIM115
+        self._feet_csv = csv.writer(self._feet_file)
+        self._feet_csv.writerow(("time_s", "left_kg", "right_kg", "total_kg", "phase", "confidence"))
+        self._feet_next = start_us
+        #: The most recent per-foot samples, for the live screen to draw.
+        self.recent_feet: deque[dict[str, Any]] = deque(maxlen=750)
         self._trace_block = [0.0] * 4
         self._trace_n = 0
         self._trace_next = start_us + TRACE_INTERVAL_US
@@ -185,6 +201,7 @@ class ActiveSession:
             self.last_us = sample.t_us
             cells = self.profile.cell_kg(sample.values)
             new_steps += self.engine.feed(sample.t_us, cells[0], cells[1])
+            self._decompose(sample.t_us, cells)
             for i in range(4):
                 self._trace_block[i] += cells[i]
             self._trace_n += 1
@@ -206,8 +223,27 @@ class ActiveSession:
         if time.monotonic() - self._last_flush >= 1.0:
             self._steps_file.flush()
             self._trace_file.flush()
+            self._feet_file.flush()
             self._last_flush = time.monotonic()
         return new_steps
+
+    def _decompose(self, t_us: int, cells: list[float]) -> None:
+        """Split this sample between the two feet, once it is far enough back.
+
+        The decomposer holds samples until the next foot has landed, because a
+        hand-over cannot be resolved before then. What comes out is already
+        settled, so it is written once and never revised.
+        """
+        for foot in self.feet.push((t_us - self.start_us) / US_PER_S, cells):
+            if t_us < self._feet_next:
+                continue
+            self._feet_next = t_us + FEET_INTERVAL_US
+            row = foot.as_dict()
+            self.recent_feet.append(row)
+            self._feet_csv.writerow([
+                row["t"], row["left"], row["right"], row["total"],
+                row["phase"], row["confidence"],
+            ])
 
     # ---- live and finish ---------------------------------------------------
 
@@ -223,12 +259,30 @@ class ActiveSession:
             "walking_s": round(sum(s["step_time_s"] for s in accepted), 1),
             "distance_m": round(sum(s["step_length_m"] for s in self.steps if s["step_length_m"]), 1),
             "recent_steps": self.steps[-12:],
+            # The last ~30 s of per-foot curve, already settled. The live chart
+            # draws these; the report reads the same rows back from feet.csv, so
+            # the two cannot disagree.
+            "feet": {
+                "quality": self.feet.quality.value,
+                "reason": self.feet.reason,
+                "body_weight_kg": round(self.feet.body_weight_kg, 1),
+                "samples": list(self.recent_feet),
+            },
         }
 
     def finish(self, status: str, closing_notes: str = "") -> dict[str, Any]:
         self._close_raw()
         self._steps_file.close()
         self._trace_file.close()
+        # Whatever the decomposer was still holding back is resolvable now that
+        # the walk has stopped, so the record keeps the last stride too.
+        for foot in self.feet.flush():
+            row = foot.as_dict()
+            self._feet_csv.writerow([
+                row["t"], row["left"], row["right"], row["total"],
+                row["phase"], row["confidence"],
+            ])
+        self._feet_file.close()
         summary = summarize(self.steps, self.conditions)
         (self.directory / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return self._write_meta(status, closing_notes)
@@ -360,7 +414,8 @@ class SessionManager:
         summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else None
         steps = _read_steps(directory / "steps.csv")
         trace = _read_trace(directory / "trace.csv", max_trace_points)
-        return {"meta": meta, "summary": summary, "steps": steps, "trace": trace}
+        feet = _read_feet(directory / "feet.csv")
+        return {"meta": meta, "summary": summary, "steps": steps, "trace": trace, "feet": feet}
 
     def file_path(self, session_id: str, name: str) -> Path | None:
         directory = self._folder(session_id)
@@ -460,3 +515,23 @@ def _hex(value: Any, default: int) -> int:
         return int(str(value), 16)
     except (TypeError, ValueError):
         return default
+
+
+def _read_feet(path: Path) -> dict[str, Any]:
+    """The per-foot curves, exactly as they were computed during the session."""
+    if not path.exists():
+        return {"t": [], "left": [], "right": [], "total": [], "phase": []}
+    t, left, right, total, phase = [], [], [], [], []
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            try:
+                t.append(float(row["time_s"]))
+                # Blank means the hand-over could not be resolved there. It stays
+                # None so the chart breaks the line rather than drawing through.
+                left.append(_float(row["left_kg"]))
+                right.append(_float(row["right_kg"]))
+                total.append(float(row["total_kg"]))
+                phase.append(row["phase"])
+            except (KeyError, TypeError, ValueError):
+                continue
+    return {"t": t, "left": left, "right": right, "total": total, "phase": phase}
