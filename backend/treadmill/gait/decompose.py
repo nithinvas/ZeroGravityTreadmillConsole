@@ -72,15 +72,21 @@ EXIT = 0.25
 #: The feet must be at least this far apart across the deck to be told apart.
 MIN_SEPARATION_M = 0.035
 
-#: Shortest run of samples that can be a real phase rather than a glitch.
-MIN_PHASE_SAMPLES = 2
+#: Shortest stretch that can be a real phase rather than a glitch, in seconds.
+#: A gait phase lasts tenths of a second; anything this brief is noise in the
+#: derivative, not a foot doing something.
+MIN_PHASE_S = 0.025
 
-#: Default smoothing, in samples, applied to the cell signals before anything
-#: else. At 80-100 Hz five samples is ~60 ms: it cuts sample noise roughly four
-#: fold while costing under 2% of peak. Never applied to the output curves --
-#: that would drag the zeros up and lose the one thing that makes these read
-#: like a dual plate.
-DEFAULT_SMOOTHING = 5
+#: Default smoothing applied to the cell signals before anything else, in
+#: seconds. Sixty milliseconds cuts sample noise roughly four fold while costing
+#: under 2% of peak, and stays well inside the ~100 ms hand-over between feet.
+#:
+#: Expressed in time, not samples, on purpose. The board runs anywhere from 80 Hz
+#: to 1 kHz, and a fixed sample count would mean 60 ms of smoothing on one deck
+#: and 5 ms on another -- the faster board, which should be the better one, would
+#: get the noisier curve. Never applied to the output: that would drag the zeros
+#: up and lose the one thing that makes these read like a dual plate.
+SMOOTHING_S = 0.06
 
 
 class Phase(str, Enum):
@@ -146,6 +152,17 @@ class Decomposition:
 
 
 # ---- signal conditioning ------------------------------------------------------
+
+
+def sample_rate(t: Sequence[float]) -> float:
+    """Samples per second, from the timestamps rather than from configuration."""
+    if len(t) < 2:
+        return 0.0
+    gaps = sorted(b - a for a, b in zip(t, t[1:]) if b > a)
+    if not gaps:
+        return 0.0
+    # Median, so a few dropped packets do not drag the estimate down.
+    return 1.0 / gaps[len(gaps) // 2]
 
 
 def moving_average(xs: Sequence[float], n: int) -> list[float]:
@@ -227,16 +244,22 @@ def decompose(
     t: Sequence[float],
     cells: Sequence[Sequence[float]],
     *,
-    smoothing: int = DEFAULT_SMOOTHING,
+    smoothing: int | None = None,
 ) -> Decomposition:
     """Split a deck trace into per-foot curves.
 
     `cells` is one row per sample: top-left, top-right, bottom-right, bottom-left,
-    in kilograms. `t` is seconds.
+    in kilograms. `t` is seconds. Smoothing defaults to SMOOTHING_S converted at
+    the rate the timestamps actually show; pass a sample count to override it.
     """
     n = len(t)
     if n < 16:
         return Decomposition([], 0.0, Quality.UNUSABLE, "not enough samples")
+
+    rate = sample_rate(t)
+    if smoothing is None:
+        smoothing = max(1, round(SMOOTHING_S * rate)) if rate > 0 else 1
+    min_phase = max(2, round(MIN_PHASE_S * rate)) if rate > 0 else 2
 
     tl = moving_average([c[0] for c in cells], smoothing)
     tr = moving_average([c[1] for c in cells], smoothing)
@@ -279,7 +302,7 @@ def decompose(
     span = right_x - left_x
 
     labels = _label(copx, loaded, left_x, span, n)
-    runs = _runs(labels)
+    runs = _runs(labels, min_phase)
     tracks = _tracks(runs, t, copx, copy_)
     return _resolve(t, total, copx, copy_, runs, tracks, body_weight)
 
@@ -309,7 +332,7 @@ def _label(copx, loaded, left_x, span, n) -> list[Phase]:
     return out
 
 
-def _runs(labels: list[Phase]) -> list[tuple[int, int, Phase]]:
+def _runs(labels: list[Phase], min_phase: int = 2) -> list[tuple[int, int, Phase]]:
     runs, i = [], 0
     while i < len(labels):
         j = i
@@ -321,7 +344,7 @@ def _runs(labels: list[Phase]) -> list[tuple[int, int, Phase]]:
     # a phase change.
     merged: list[tuple[int, int, Phase]] = []
     for a, b, p in runs:
-        if b - a < MIN_PHASE_SAMPLES and merged:
+        if b - a < min_phase and merged:
             pa, pb, pp = merged[-1]
             merged[-1] = (pa, b, pp)
         else:
@@ -471,7 +494,7 @@ class StreamingDecomposer:
     RESOLVE_INTERVAL_S = 0.05
 
     def __init__(self, window_s: float = 4.0, settle_s: float = 0.5,
-                 smoothing: int = DEFAULT_SMOOTHING) -> None:
+                 smoothing: int | None = None) -> None:
         self.window_s = window_s
         self.settle_s = settle_s
         self.smoothing = smoothing
@@ -525,7 +548,7 @@ def decompose_trace(
     t: Sequence[float],
     cells: Sequence[Sequence[float]],
     *,
-    smoothing: int = DEFAULT_SMOOTHING,
+    smoothing: int | None = None,
 ) -> Decomposition:
     """Decompose a stored session, exactly as the live screen did.
 

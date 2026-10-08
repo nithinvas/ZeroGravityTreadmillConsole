@@ -74,9 +74,18 @@ There is a fixed **0.5 s lag**: a hand-over cannot be resolved until the next fo
 has landed and been measured. Single stance could be emitted instantly, but then
 part of the curve would always arrive late, so all of it is delayed equally.
 
+## Board rate
+
+Smoothing (60 ms) and the minimum phase length (25 ms) are specified in **seconds**
+and converted at whatever rate the timestamps show. They were originally sample
+counts tuned at 83 Hz, which meant a 1 kHz board got 5 ms of smoothing instead of
+60 — the better hardware would have produced the noisier curve. Tests assert the
+same walk decomposes the same at 80, 250 and 1000 Hz.
+
 ## Performance
 
-5,600 samples/s in pure Python — about 9% of one core at the board's 976 Hz. The
+9,300 samples/s in pure Python — about 11% of one core at 1 kHz, 9% at the board's
+976 Hz. The
 window is re-solved 20 times a second rather than per sample; re-solving per sample
 is ~50x more work and was enough to stall the acquisition loop when first written.
 

@@ -20,6 +20,7 @@ from treadmill.gait.decompose import (
     StreamingDecomposer,
     decompose,
     decompose_trace,
+    sample_rate,
     moving_average,
 )
 
@@ -185,3 +186,53 @@ def test_moving_average_keeps_its_length_and_its_edges():
     out = moving_average([0.0, 0.0, 9.0, 0.0, 0.0], 3)
     assert len(out) == 5
     assert out[2] == pytest.approx(3.0)
+
+
+# ---- the board's rate must not change the answer ------------------------------
+
+
+def test_rate_is_read_from_the_timestamps():
+    assert sample_rate([i / 1000.0 for i in range(50)]) == pytest.approx(1000.0)
+    assert sample_rate([i / 80.0 for i in range(50)]) == pytest.approx(80.0)
+    assert sample_rate([0.0]) == 0.0
+
+
+@pytest.mark.parametrize("rate", [80.0, 250.0, 1000.0])
+def test_the_same_walk_decomposes_the_same_at_any_board_rate(rate):
+    """A 1 kHz board must not get a noisier curve than an 80 Hz one.
+
+    Smoothing and the minimum phase length are specified in seconds and
+    converted at whatever rate the timestamps show. When they were specified in
+    samples instead, a 1 kHz board got 5 ms of smoothing where 80 Hz got 60 ms,
+    and the better hardware produced the worse curve.
+    """
+    import math
+
+    t, cells, truth = walker(seconds=6.0)
+    # Resample the same walk onto the target rate by nearest neighbour; the
+    # underlying gait is identical, only the sampling differs.
+    n = int(6.0 * rate)
+    rt = [i / rate for i in range(n)]
+    rc = [cells[min(len(cells) - 1, int(ti * RATE))] for ti in rt]
+    rtruth = [truth[min(len(truth) - 1, int(ti * RATE))] for ti in rt]
+
+    r = decompose(rt, rc)
+    assert r.quality is Quality.GOOD, f"{rate} Hz: {r.reason}"
+    assert r.body_weight_kg == pytest.approx(70.0, rel=0.1)
+
+    resolved = [(s, tr) for s, tr in zip(r.samples, rtruth)
+                if s.phase is not Phase.UNAVAILABLE]
+    assert len(resolved) > 0.9 * len(rtruth)
+    err = [abs(s.left_kg - tl) for s, (tl, _) in resolved]
+    assert sum(err) / len(err) < 0.05 * 70.0, f"{rate} Hz mean error too high"
+    assert not any(math.isnan(s.left_kg) for s in r.samples)
+
+
+def test_smoothing_scales_with_the_rate():
+    """Sixty milliseconds of smoothing, whatever the board is doing."""
+    import treadmill.gait.decompose as d
+
+    slow = [i / 80.0 for i in range(200)]
+    fast = [i / 1000.0 for i in range(2000)]
+    assert round(d.SMOOTHING_S * sample_rate(slow)) == 5
+    assert round(d.SMOOTHING_S * sample_rate(fast)) == 60
