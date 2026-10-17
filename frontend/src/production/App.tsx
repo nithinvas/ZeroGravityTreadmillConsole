@@ -5,6 +5,8 @@ import type { Snapshot } from "../types";
 import { useSocket } from "../useSocket";
 import { HomeScreen, type Patient } from "./HomeScreen";
 import { LockScreen, type Staff } from "./LockScreen";
+import { PatientScreen } from "./PatientScreen";
+import { SessionDetail } from "./SessionDetail";
 import { ReportScreen } from "./ReportScreen";
 import { SessionScreen } from "./SessionScreen";
 import { StaffScreen } from "./StaffScreen";
@@ -25,6 +27,8 @@ import "./theme.css";
 type Screen =
   | { at: "lock" }
   | { at: "home" }
+  | { at: "patient"; id: string }
+  | { at: "session-detail"; id: string; from: string }
   | { at: "wizard"; patient: Patient | null }
   | { at: "session"; bws: number }
   | { at: "report"; id: string }
@@ -44,7 +48,7 @@ export default function ProductionApp() {
   // A session already running when the screen loads — after a reload, or a
   // browser that was restarted mid-session — must be picked up, not lost.
   if (snapshot?.session && screen.at !== "session" && screen.at !== "service"
-      && screen.at !== "staff" && staff) {
+      && screen.at !== "staff" && screen.at !== "session-detail" && staff) {
     setScreen({ at: "session", bws: 0 });
   }
 
@@ -109,10 +113,23 @@ export default function ProductionApp() {
         {screen.at === "home" && (
           <HomeScreen
             onNewPatient={() => setScreen({ at: "wizard", patient: null })}
-            onPickPatient={(p) => setScreen({ at: "wizard", patient: p })}
+            onPickPatient={(p) => setScreen({ at: "patient", id: p.id })}
             onManageStaff={staff?.role === "technician" ? () => setScreen({ at: "staff" }) : undefined}
             onService={staff?.role === "technician" ? () => setScreen({ at: "service" }) : undefined}
           />
+        )}
+
+        {screen.at === "patient" && (
+          <PatientScreen
+            patientId={screen.id}
+            onStart={(p) => setScreen({ at: "wizard", patient: p })}
+            onOpenSession={(id) => setScreen({ at: "session-detail", id, from: screen.id })}
+            onBack={() => setScreen({ at: "home" })}
+          />
+        )}
+
+        {screen.at === "session-detail" && (
+          <SessionDetail id={screen.id} onBack={() => setScreen({ at: "patient", id: screen.from })} />
         )}
 
         {screen.at === "wizard" && snapshot && staff && (

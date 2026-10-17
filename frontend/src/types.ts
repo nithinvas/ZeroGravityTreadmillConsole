@@ -236,6 +236,7 @@ export interface Block {
   cadence_spm: Spread;
   step_length_m: Spread;
   stride_length_m: Spread;
+  step_time_s: Spread;
 }
 
 export interface SessionSummary {
