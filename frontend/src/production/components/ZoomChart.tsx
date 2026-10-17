@@ -97,17 +97,49 @@ export function ZoomChart({
     }
 
     for (const s of series) {
+      const vis = s.points.filter(([x]) => x >= range.lo - 1 && x <= range.hi + 1);
+      if (!vis.length) continue;
+
+      if (vis.length > pw * 1.5) {
+        // More samples than pixels. Drawing a polyline here is not a smaller
+        // version of the signal, it is aliasing -- a 2.7 Hz walking rhythm into
+        // a 1.6-pixel step reads as a solid band of noise, which is what this
+        // chart used to show.
+        //
+        // So draw what each pixel column actually contains: a vertical line
+        // from its lowest sample to its highest. The envelope is honest at any
+        // zoom, and keeps the peaks. A moving average would smooth them away,
+        // and the peak is the clinically interesting part.
+        const lows = new Float64Array(pw).fill(Infinity);
+        const highs = new Float64Array(pw).fill(-Infinity);
+        for (const [x, y] of vis) {
+          if (y === null) continue;
+          const c = Math.min(pw - 1, Math.max(0, Math.floor(((x - range.lo) / (range.hi - range.lo)) * pw)));
+          if (y < lows[c]) lows[c] = y;
+          if (y > highs[c]) highs[c] = y;
+        }
+        ctx.fillStyle = s.colour;
+        ctx.globalAlpha = 0.85;
+        for (let c = 0; c < pw; c++) {
+          if (lows[c] === Infinity) continue;         // a gap stays a gap
+          const top = Y(highs[c]);
+          ctx.fillRect(pad.l + c, top, 1, Math.max(1, Y(lows[c]) - top));
+        }
+        ctx.globalAlpha = 1;
+        continue;
+      }
+
       ctx.strokeStyle = s.colour;
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       let open = false;
-      for (const [x, y] of s.points) {
-        if (x < range.lo - 1 || x > range.hi + 1) { open = false; continue; }
+      for (const [x, y] of vis) {
         if (y === null) { open = false; continue; }   // a gap stays a gap
         if (open) ctx.lineTo(X(x), Y(y)); else { ctx.moveTo(X(x), Y(y)); open = true; }
       }
       ctx.stroke();
     }
+
   }, [series, range, height, yLabel, zeroLine]);
 
   const clamp = (lo: number, hi: number): Range => {
@@ -204,7 +236,9 @@ export function ZoomBar({ range, bounds, onRange }: {
       </button>
       <span className="muted" style={{ fontSize: 12, marginLeft: "auto" }}>
         {range.lo.toFixed(1)}–{range.hi.toFixed(1)} s of {full.toFixed(0)} s
-        {span < full ? "" : " · pinch or drag to zoom"}
+        {span > 25
+          ? " · showing the range each step covers — zoom in for the trace"
+          : " · showing the trace"}
       </span>
     </div>
   );
