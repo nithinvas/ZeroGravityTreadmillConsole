@@ -30,6 +30,7 @@ from treadmill import __version__
 from treadmill.calibration.profile import CalibrationProfile
 from treadmill.device.base import Transfer
 from treadmill.gait.decompose import StreamingDecomposer
+from treadmill.gait.weightbearing import WeightBearingTracker
 from treadmill.gait.engine import GaitEngine, Step
 from treadmill.gait.speed import SpeedTimeline
 from treadmill.logs import get_logger, log_event
@@ -80,6 +81,10 @@ class SessionDetails:
     body_weight_kg: float | None = None
     bws_percent: float | None = None
     incline_percent: float | None = None
+    #: The surgeon's weight-bearing limit for the operated leg, in kg. The
+    #: prescription is written per leg, so this is compared against each leg's
+    #: peak, never against the total.
+    weight_bearing_limit_kg: float | None = None
     notes: str = ""
 
     def __post_init__(self) -> None:
@@ -130,6 +135,14 @@ class ActiveSession:
         self._trace_csv = csv.writer(self._trace_file)
         self._trace_csv.writerow(("time_s", "tl_kg", "tr_kg", "br_kg", "bl_kg", "total_kg"))
         self.feet = StreamingDecomposer()
+        # Body weight comes from the record, never from the deck: a patient on
+        # the handrails puts part of their weight through their arms, and a
+        # deck-derived body weight would make every percentage flatter
+        # than the truth.
+        self.weight_bearing = WeightBearingTracker(
+            body_weight_kg=details.body_weight_kg,
+            limit_kg=details.weight_bearing_limit_kg,
+        )
         self._feet_file: TextIO = open(directory / "feet.csv", "w", newline="", encoding="utf-8")  # noqa: SIM115
         self._feet_csv = csv.writer(self._feet_file)
         self._feet_csv.writerow(("time_s", "left_kg", "right_kg", "total_kg", "phase", "confidence"))
@@ -200,7 +213,12 @@ class ActiveSession:
                 continue
             self.last_us = sample.t_us
             cells = self.profile.cell_kg(sample.values)
-            new_steps += self.engine.feed(sample.t_us, cells[0], cells[1])
+            fresh = self.engine.feed(sample.t_us, cells[0], cells[1])
+            new_steps += fresh
+            secs = (sample.t_us - self.start_us) / US_PER_S
+            self.weight_bearing.on_sample(secs, sum(cells))
+            for st in fresh:
+                self.weight_bearing.on_step((st.t_us - self.start_us) / US_PER_S, st.side)
             self._decompose(sample.t_us, cells)
             for i in range(4):
                 self._trace_block[i] += cells[i]
@@ -262,6 +280,7 @@ class ActiveSession:
             # The last ~30 s of per-foot curve, already settled. The live chart
             # draws these; the report reads the same rows back from feet.csv, so
             # the two cannot disagree.
+            "weight_bearing": self.weight_bearing.state().as_dict(),
             "feet": {
                 "quality": self.feet.quality.value,
                 "reason": self.feet.reason,
@@ -283,7 +302,9 @@ class ActiveSession:
                 row["phase"], row["confidence"],
             ])
         self._feet_file.close()
+        self.weight_bearing.finish((self.last_us - self.start_us) / US_PER_S)
         summary = summarize(self.steps, self.conditions)
+        summary["weight_bearing"] = self.weight_bearing.summary()
         (self.directory / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return self._write_meta(status, closing_notes)
 

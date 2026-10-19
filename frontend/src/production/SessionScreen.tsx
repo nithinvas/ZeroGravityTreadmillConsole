@@ -4,6 +4,7 @@ import { fmtDuration, fmtNum } from "../format";
 import { LiveChart } from "../components/LiveChart";
 import { LiveGaitChart } from "../components/LiveGaitChart";
 import { FootForceChart } from "./components/FootForceChart";
+import { WeightBearingPanel } from "./components/WeightBearingPanel";
 import type { SessionLive, Snapshot } from "../types";
 
 /**
@@ -107,6 +108,10 @@ export function SessionScreen({ snapshot, session, bwsPercent, onFinished }: {
           </div>
         </div>
       )}
+
+      <div style={{ padding: "0 18px 4px" }}>
+        <WeightBearingPanel wb={session.weight_bearing} />
+      </div>
 
       <div className="prod-tabs">
         <button className={`prod-tab${tab === "live" ? " on" : ""}`} onClick={() => setTab("live")}>

@@ -38,6 +38,9 @@ const live: SessionLive = {
   distance_m: 78.4,
   recent_steps: [],
   feet: { quality: "unusable", reason: "", body_weight_kg: 0, samples: [] },
+  weight_bearing: { quality: "unavailable", reason: "", left_kg: null, right_kg: null,
+    combined_kg: null, left_pct_bw: null, right_pct_bw: null, combined_pct_bw: null,
+    body_weight_kg: null, limit_kg: null, steps: 0, steps_over: 0, separation: 0 },
 };
 
 it("will not start a session without coefficients", () => {

@@ -47,8 +47,17 @@ export default function ProductionApp() {
 
   // A session already running when the screen loads — after a reload, or a
   // browser that was restarted mid-session — must be picked up, not lost.
-  if (snapshot?.session && screen.at !== "session" && screen.at !== "service"
-      && screen.at !== "staff" && screen.at !== "session-detail" && staff) {
+  //
+  // The report is excluded deliberately. Ending a session and showing its
+  // report happens faster than the next live snapshot arrives, so for a moment
+  // the snapshot still carries the session that just finished. Without this the
+  // therapist was thrown off the report they had just earned, onto the session
+  // screen, and then — once the snapshot caught up — onto "No session is
+  // running" with a single button back to the home screen. The report was
+  // generated, stored and then never shown.
+  const resumable = !["session", "service", "staff", "session-detail", "report"]
+    .includes(screen.at);
+  if (snapshot?.session && resumable && staff) {
     setScreen({ at: "session", bws: 0 });
   }
 
@@ -178,6 +187,7 @@ async function startSession(r: WizardResult, setScreen: (s: Screen) => void) {
     tester: "",
     body_weight_kg: r.patient.weight_kg,
     bws_percent: r.bwsPercent || null,
+    weight_bearing_limit_kg: r.weightBearingLimitKg,
     // Started without belt control when no treadmill is connected: the load
     // cells and gait still record, which is most of the value.
     without_treadmill: true,

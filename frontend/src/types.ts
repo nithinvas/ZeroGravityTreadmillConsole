@@ -149,6 +149,8 @@ export interface SessionDetails {
   bws_percent: number | null;
   incline_percent: number | null;
   notes: string;
+  /** The surgeon's weight-bearing limit for the operated leg, in kg. */
+  weight_bearing_limit_kg?: number | null;
 }
 
 export interface Condition {
@@ -189,6 +191,31 @@ export interface SessionLive {
   distance_m: number;
   recent_steps: StepRow[];
   feet: FeetLive;
+  weight_bearing: WeightBearing;
+}
+
+/**
+ * How much each leg is carrying, against the surgeon's limit.
+ *
+ * `quality: "combined"` means the two legs could not be separated — the patient
+ * has both feet on the deck almost all the time — so only `combined_kg` is
+ * given. That is the honest answer, not a failure.
+ */
+export interface WeightBearing {
+  quality: "good" | "fair" | "combined" | "unavailable";
+  reason: string;
+  left_kg: number | null;
+  right_kg: number | null;
+  combined_kg: number | null;
+  left_pct_bw: number | null;
+  right_pct_bw: number | null;
+  combined_pct_bw: number | null;
+  body_weight_kg: number | null;
+  limit_kg: number | null;
+  steps: number;
+  steps_over: number;
+  /** 0–1: how far the load falls between steps. Below 0.25 the legs merge. */
+  separation: number;
 }
 
 /** One instant of the per-foot decomposition. */
@@ -239,7 +266,20 @@ export interface Block {
   step_time_s: Spread;
 }
 
+export interface WeightBearingSummary extends WeightBearing {
+  session: {
+    steps: number;
+    steps_over: number;
+    left_median_kg: number | null;
+    right_median_kg: number | null;
+    left_max_kg: number | null;
+    right_max_kg: number | null;
+    combined_max_kg: number | null;
+  };
+}
+
 export interface SessionSummary {
+  weight_bearing?: WeightBearingSummary;
   blocks: Block[];
   steps_total: number;
   steps_accepted: number;

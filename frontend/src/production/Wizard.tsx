@@ -46,6 +46,8 @@ const BWS_PRESETS = [
 ];
 
 export interface WizardResult {
+  /** The surgeon's weight-bearing limit for the operated leg, kg. */
+  weightBearingLimitKg: number | null;
   patient: Patient;
   bwsPercent: number;
   heightMm: number | null;
@@ -77,6 +79,7 @@ export function Wizard({ snapshot, staff, patient, onCancel, onStart }: {
   const [saved, setSaved] = useState<Patient | null>(patient);
   const [ticked, setTicked] = useState<Set<string>>(new Set());
   const [bws, setBws] = useState(0);
+  const [wbLimit, setWbLimit] = useState("");
 
   const heightCm = Number(form.height_cm) || 0;
   const targetMm = heightCm ? groinHeightMm(heightCm) : null;
@@ -360,6 +363,29 @@ export function Wizard({ snapshot, staff, patient, onCancel, onStart }: {
               <strong style={{ color: "var(--fg)" }}>{fmtNum(bodyWeight * (1 - bws / 100), 1)} kg</strong>.
             </p>
           )}
+
+          <div style={{ marginTop: 26, borderTop: "1px solid var(--line)", paddingTop: 20 }}>
+            <div className="prod-eyebrow">Weight-bearing limit</div>
+            <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+              If the surgeon set a limit for the operated leg, enter it in kilograms. The console
+              will count every step that goes over. Leave it blank if the patient is on full
+              weight bearing.
+            </p>
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+              <TapNumber label="Limit (kg per leg)" value={wbLimit} onChange={setWbLimit} />
+              {bodyWeight > 0 && Number(wbLimit) > 0 && (
+                <p className="muted" style={{ fontSize: 13, margin: "0 0 10px" }}>
+                  {fmtNum((100 * Number(wbLimit)) / bodyWeight, 0)}% of this patient&apos;s body weight.
+                  {Number(wbLimit) / bodyWeight < 0.35 && (
+                    <strong style={{ color: "var(--warn)", display: "block", marginTop: 4 }}>
+                      Limits this low are rarely achievable — in one study of 50 knee-replacement
+                      patients, none met a 20 kg limit on the first day.
+                    </strong>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
         <div className="prod-wizard-foot">
           <button className="prod-btn" onClick={() => setStep(4)}>← Back</button>
@@ -414,7 +440,12 @@ export function Wizard({ snapshot, staff, patient, onCancel, onStart }: {
         <button className="prod-btn primary big" disabled={!saved || !ready || busy}
           onClick={() => {
             if (!saved) return;
-            onStart({ patient: saved, bwsPercent: bws, heightMm: targetMm });
+            onStart({
+              patient: saved,
+              bwsPercent: bws,
+              heightMm: targetMm,
+              weightBearingLimitKg: Number(wbLimit) > 0 ? Number(wbLimit) : null,
+            });
           }}>
           Start session →
         </button>

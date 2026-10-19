@@ -337,3 +337,42 @@
 @media (max-width: 1000px) {
   .prod-home, .prod-two, .prod-grid-2 { grid-template-columns: 1fr; }
 }
+
+/* ---- Weight bearing -------------------------------------------------------
+   The one number a patient cannot sense for themselves, so it gets the space.
+   Red is reserved for actually exceeding the surgeon's limit; nothing else on
+   this panel uses it. */
+.prod-wb {
+  background: var(--card, #121a23);
+  border: 1px solid var(--line, #1f2c38);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.prod-wb.over { border-color: rgba(255, 99, 120, .45); }
+.prod-wb-limit { font-size: 12.5px; color: var(--muted, #7e8fa0); }
+.prod-wb-flag {
+  font-size: 11px; color: #f5b74e; border: 1px solid rgba(245, 183, 78, .35);
+  border-radius: 999px; padding: 1px 8px;
+}
+.prod-wb-legs { display: flex; gap: 14px; margin-top: 12px; }
+.prod-wb-leg {
+  flex: 1; min-width: 0; background: rgba(255, 255, 255, .025);
+  border: 1px solid var(--line, #1f2c38); border-radius: 12px; padding: 12px 14px;
+}
+.prod-wb-leg.wide { flex: 1 1 100%; }
+.prod-wb-leg.over { border-color: rgba(255, 99, 120, .5); background: rgba(255, 99, 120, .06); }
+.prod-wb-leg .l { font-size: 12px; color: var(--muted, #7e8fa0); }
+.prod-wb-leg .kg { font-size: 34px; font-weight: 700; line-height: 1.1; }
+.prod-wb-leg .kg span { font-size: 15px; font-weight: 500; color: var(--muted, #7e8fa0); margin-left: 5px; }
+.prod-wb-leg .pct { font-size: 13px; color: var(--muted, #7e8fa0); }
+.prod-wb-leg .bar {
+  height: 6px; border-radius: 999px; background: rgba(255, 255, 255, .07);
+  margin-top: 10px; overflow: hidden;
+}
+.prod-wb-leg .bar i { display: block; height: 100%; background: var(--accent, #19e5a5); }
+.prod-wb-leg.over .bar i { background: var(--danger, #ff6378); }
+.prod-wb-leg .verdict { font-size: 11.5px; color: var(--muted, #7e8fa0); margin-top: 6px; }
+.prod-wb-leg.over .verdict { color: var(--danger, #ff6378); font-weight: 600; }
+.prod-wb-steps { font-size: 12.5px; color: var(--muted, #7e8fa0); margin-top: 11px; }
+.prod-wb-steps.over { color: var(--danger, #ff6378); font-weight: 600; }
+@media (max-width: 720px) { .prod-wb-legs { flex-direction: column; } }

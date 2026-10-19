@@ -5,6 +5,7 @@ import { CELL_COLOURS } from "../components/LiveChart";
 import { fmtDuration, fmtNum } from "../format";
 import type { SessionReport, Spread } from "../types";
 import { FootForceChart } from "./components/FootForceChart";
+import { WeightBearingReport } from "./components/WeightBearingReport";
 
 /**
  * What the therapist reads afterwards, and what goes in the patient's file.
@@ -94,6 +95,8 @@ export function ReportScreen({ id, onDone }: { id: string; onDone: () => void })
           </dl>
         </div>
       </div>
+
+      <WeightBearingReport summary={summary} meta={meta} />
 
       <div className="prod-card">
         <div className="prod-eyebrow">Cadence</div>

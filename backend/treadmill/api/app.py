@@ -79,6 +79,8 @@ class SessionStart(BaseModel):
     activity: str = "walk"
     body_weight_kg: float | None = Field(default=None, gt=0, le=300)
     bws_percent: float | None = Field(default=None, ge=0, le=100)
+    #: The surgeon's weight-bearing limit for the operated leg, in kg.
+    weight_bearing_limit_kg: float | None = Field(default=None, gt=0, le=300)
     notes: str = Field(default="", max_length=2000)
     #: Starting without belt control is allowed, but only when asked for explicitly,
     #: so nobody discovers mid-session that the + and − buttons do nothing.
