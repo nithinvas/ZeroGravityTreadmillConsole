@@ -14,6 +14,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from treadmill import db as db_module
+
 COLUMNS = (
     "id",
     "folder",
@@ -59,13 +61,16 @@ class SessionIndex:
         self.path = path
         self._lock = threading.Lock()
         with self._connect() as db:
-            db.execute(_schema())
+            # One step, generated from COLUMNS. This file is a cache that can be
+            # deleted and rebuilt from the session folders, so a schema change
+            # here needs no migration path -- but it still carries a version, so
+            # a future change can tell an old cache from a new one.
+            db_module.migrate(db, [(1, _schema())], "sessions")
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
         with self._lock:
-            db = sqlite3.connect(self.path)
-            db.row_factory = sqlite3.Row
+            db = db_module.connect(self.path)
             try:
                 yield db
                 db.commit()

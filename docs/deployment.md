@@ -489,3 +489,32 @@ radio and a real treadmill, the touch panel, Cage and Chromium on the real GPU,
 and boot-to-kiosk timing. The [design doc](design.md) §13 lists the acceptance
 tests for those, including the 8-hour soak in the final mounting position — the
 N100 is passively cooled and will sit near the treadmill motor.
+
+
+## Backups
+
+Both SQLite files are copied to `/var/lib/treadmill/backups/` every time a
+session finishes -- the only moment the records can have changed, and the only
+moment somebody is at the machine to notice a full disk. The most recent 14 of
+each are kept.
+
+A copy is taken with SQLite's online backup API rather than `cp`, because the
+console may be writing at the time and a plain file copy can capture a torn
+write.
+
+Before an upgrade, or to check what exists:
+
+```bash
+treadmill backup                    # take one now
+treadmill backup --list             # what is already there
+```
+
+These are copies on the same disk, so they survive a corrupted database but not
+a failed drive. Copy them to a USB stick on a service visit.
+
+### Schema versions
+
+Each database carries its version in `PRAGMA user_version` and is brought
+forward one numbered step at a time on open. A machine shipped before versioning
+existed reads as version 0; its first open stamps it to 1 and leaves the data
+alone. Never edit a migration step that has left the building -- add a new one.

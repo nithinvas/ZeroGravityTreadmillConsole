@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import logging
 import os
@@ -349,11 +350,44 @@ def main(argv: list[str] | None = None) -> int:
     logs.add_argument("--data-dir", default=str(default_data_dir()))
     logs.set_defaults(func=cmd_logs)
 
+    backup = sub.add_parser("backup", help="copy the databases, or list the copies")
+    backup.add_argument("--list", action="store_true", help="show the copies already taken")
+    backup.add_argument("--keep", type=int, default=14)
+    backup.add_argument("--data-dir", default=str(default_data_dir()))
+    backup.set_defaults(func=cmd_backup)
+
     args = parser.parse_args(argv)
     try:
         return int(args.func(args))
     except KeyboardInterrupt:
         return 130
+
+
+def cmd_backup(args: argparse.Namespace) -> int:
+    """Copy the databases on demand -- what a service engineer runs before an upgrade."""
+    from treadmill import db as db_module
+
+    root = Path(args.data_dir).expanduser()
+    directory = root / "backups"
+    if args.list:
+        copies = sorted(directory.glob("*.sqlite"))
+        if not copies:
+            print(f"No backups in {directory}")
+            return 0
+        for c in copies:
+            size = c.stat().st_size / 1024
+            print(f"{c.name:<44} {size:8.1f} kB  {dt.datetime.fromtimestamp(c.stat().st_mtime):%Y-%m-%d %H:%M}")
+        print(f"\n{len(copies)} copies in {directory}")
+        return 0
+
+    made = db_module.backup_all(root, keep=args.keep)
+    if not made:
+        print(f"Nothing to back up in {root}", file=sys.stderr)
+        return 1
+    for m in made:
+        print(f"{m}  ({m.stat().st_size / 1024:.1f} kB)")
+    print(f"Keeping the most recent {args.keep} of each.")
+    return 0
 
 
 if __name__ == "__main__":

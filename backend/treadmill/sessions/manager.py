@@ -20,6 +20,7 @@ import datetime as dt
 import json
 import logging
 import time
+import sqlite3
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass
@@ -27,6 +28,7 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from treadmill import __version__
+from treadmill import db as db_module
 from treadmill.calibration.profile import CalibrationProfile
 from treadmill.device.base import Transfer
 from treadmill.gait.decompose import StreamingDecomposer
@@ -408,6 +410,15 @@ class SessionManager:
         meta = session.finish("completed", closing_notes)
         summary = json.loads((session.directory / "summary.json").read_text(encoding="utf-8"))
         self.index.upsert(index_row(meta, summary, session.directory.name))
+        # A session is the only moment the patient records can have changed, and
+        # the only moment somebody is standing at the machine to notice if the
+        # disk is full. Backing up here rather than on a timer means the copy is
+        # always of a state somebody cared about, and never mid-write.
+        try:
+            db_module.backup_all(self.root.parent)
+        except (OSError, sqlite3.Error) as error:   # never lose a session over a backup
+            log_event(log, logging.WARNING, "db.backup_failed",
+                      f"Could not back up the databases: {error}")
         log_event(
             log,
             logging.INFO,

@@ -27,6 +27,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from treadmill import db as db_module
+
 #: Roles. A therapist runs sessions; a technician also holds calibration and
 #: settings, because a mis-set coefficient makes every weight the machine ever
 #: reports wrong, and that should not be one tap away from a clinical screen.
@@ -103,13 +105,12 @@ class PeopleStore:
         #: because the lockout is short enough that waiting is easier anyway.
         self._attempts: dict[str, list[float]] = {}
         with self._connect() as db:
-            db.executescript(SCHEMA)
+            db_module.migrate(db, MIGRATIONS, "people")
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
         with self._lock:
-            db = sqlite3.connect(self.path)
-            db.row_factory = sqlite3.Row
+            db = db_module.connect(self.path)
             try:
                 yield db
                 db.commit()
@@ -337,7 +338,11 @@ def _patient_from(row: sqlite3.Row) -> Patient:
     )
 
 
-SCHEMA = """
+#: Numbered schema steps. Step 1 is the schema as it shipped, written so it is
+#: safe against machines that already have these tables but no version stamp.
+#: Never edit a step once it has left the building -- add a new one.
+MIGRATIONS: list[tuple[int, str]] = [
+    (1, """
 CREATE TABLE IF NOT EXISTS patients (
     id           TEXT PRIMARY KEY,
     name         TEXT NOT NULL,
@@ -361,4 +366,5 @@ CREATE TABLE IF NOT EXISTS staff (
     pin_salt   BLOB NOT NULL,
     created_at TEXT
 );
-"""
+"""),
+]
