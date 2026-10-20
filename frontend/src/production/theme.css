@@ -376,3 +376,27 @@
 .prod-wb-steps { font-size: 12.5px; color: var(--muted, #7e8fa0); margin-top: 11px; }
 .prod-wb-steps.over { color: var(--danger, #ff6378); font-weight: 600; }
 @media (max-width: 720px) { .prod-wb-legs { flex-direction: column; } }
+
+
+/* The readiness line. Shown only when there is something to say, so it never
+   becomes wallpaper. Red stops a session; amber is worth knowing. */
+.prod-health {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px; border-radius: 10px; font-size: 13px;
+  border: 1px solid transparent; max-width: 52ch;
+}
+.prod-health .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.prod-health strong { font-weight: 600; }
+.prod-health em { font-style: normal; display: block; font-size: 12px; opacity: .8; }
+.prod-health.bad {
+  color: var(--danger, #ff6378);
+  background: rgba(255, 99, 120, .08);
+  border-color: rgba(255, 99, 120, .35);
+}
+.prod-health.bad .dot { background: var(--danger, #ff6378); }
+.prod-health.warn {
+  color: var(--warn, #f5b74e);
+  background: rgba(245, 183, 78, .07);
+  border-color: rgba(245, 183, 78, .3);
+}
+.prod-health.warn .dot { background: var(--warn, #f5b74e); }

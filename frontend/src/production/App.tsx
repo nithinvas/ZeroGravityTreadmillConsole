@@ -10,7 +10,7 @@ import { SessionDetail } from "./SessionDetail";
 import { ReportScreen } from "./ReportScreen";
 import { SessionScreen } from "./SessionScreen";
 import { StaffScreen } from "./StaffScreen";
-import { TopBar } from "./parts";
+import { TopBar, subsystems } from "./parts";
 import { Wizard, type WizardResult } from "./Wizard";
 import "./theme.css";
 
@@ -73,6 +73,26 @@ export default function ProductionApp() {
           <span style={{ color: "#7e8fa0", fontSize: 12.5 }}>
             Calibration, diagnostics and the raw signal. Everything here affects every measurement.
           </span>
+          {/* The subsystem dots live here rather than on the clinical screens:
+              three of them report hardware that is not wired yet, and a
+              therapist cannot act on any of them. */}
+          {snapshot && (
+            <span style={{ display: "flex", gap: 14, fontSize: 11.5, color: "#7e8fa0" }}>
+              {subsystems(snapshot).map((x) => (
+                <span key={x.name} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <i style={{
+                    width: 6, height: 6, borderRadius: "50%", display: "inline-block",
+                    background: x.state === "ok" ? "#19e5a5"
+                      : x.state === "warn" ? "#f5b74e"
+                      : x.state === "bad" ? "#ff6378" : "#44566b",
+                  }} />
+                  {x.name}
+                </span>
+              ))}
+              <span>v{snapshot.app.version}
+                {snapshot.link.device.bcd_device ? ` · fw ${snapshot.link.device.bcd_device}` : ""}</span>
+            </span>
+          )}
           <button style={{
             marginLeft: "auto", background: "#19e5a5", border: "none", color: "#062018",
             borderRadius: 8, padding: "8px 16px", fontWeight: 700, cursor: "pointer",

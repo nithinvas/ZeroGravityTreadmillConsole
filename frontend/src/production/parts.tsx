@@ -9,10 +9,13 @@ export function initials(name: string): string {
 }
 
 /**
- * The subsystems a therapist needs to know the state of before putting someone
- * on the machine. Anything the console cannot actually observe yet is shown as
- * unknown rather than green — a dot that is always green tells you nothing, and
- * would be a lie on the two that are still prototype hardware.
+ * The subsystems, for the service screen.
+ *
+ * Not for therapists. Half of these report nothing the console can observe --
+ * the air pump, pressure sensor and e-stop are hardcoded, because that hardware
+ * is not wired yet -- and a therapist cannot act on "Pressure Sensor: unknown"
+ * anyway. What they need is whether a session can be recorded, which is one
+ * question with one answer; see `readiness` below.
  */
 export function subsystems(s: Snapshot) {
   const usb = s.link.state === "streaming" ? "ok" : s.link.state === "waiting" ? "warn" : "bad";
@@ -39,44 +42,38 @@ export function TopBar({ snapshot, right }: { snapshot: Snapshot | null; right?:
     return () => clearInterval(t);
   }, []);
 
-  const warnings = snapshot?.warnings.length ?? 0;
-  const healthy = snapshot !== null && warnings === 0;
+  const problem = readiness(snapshot);
 
   return (
     <>
       <header className="prod-top">
         <div className="prod-brand">
-          <div className="prod-mark">Z</div>
+          <div className="prod-mark">R</div>
           <div>
-            <small>ZERO GRAVITY</small>
-            <strong>Rehabilitation Treadmill</strong>
+            <small>REHAX</small>
+            <strong>Anti Gravity Treadmill</strong>
           </div>
         </div>
-        <div className={`prod-health${healthy ? "" : " bad"}`}>
-          <span className="dot" />
-          {snapshot === null
-            ? "Connecting…"
-            : warnings === 0
-              ? "All Systems Operational"
-              : `${warnings} ${warnings === 1 ? "warning" : "warnings"}`}
-        </div>
+        {/* Silence means ready. A banner that says "all systems operational"
+            while the load-cell board is unplugged -- which is what this said,
+            because it counted warnings and the board not being there raises
+            none -- teaches people to stop reading it. */}
+        {problem && (
+          <div className={`prod-health ${problem.severity}`} role="status">
+            <span className="dot" />
+            <span>
+              <strong>{problem.what}</strong>
+              {problem.todo && <em>{problem.todo}</em>}
+            </span>
+          </div>
+        )}
         {right}
         <div className="prod-clock">
           <div className="time">{now.toLocaleTimeString(undefined, { hour12: false })}</div>
           <div className="date">{now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div>
         </div>
       </header>
-      {snapshot && (
-        <div className="prod-subsystems">
-          {subsystems(snapshot).map((x) => (
-            <span key={x.name}><i className={x.state} />{x.name}</span>
-          ))}
-          <span className="fw">
-            v{snapshot.app.version}
-            {snapshot.link.device.bcd_device ? ` · fw ${snapshot.link.device.bcd_device}` : ""}
-          </span>
-        </div>
-      )}
+
     </>
   );
 }
@@ -169,4 +166,53 @@ export function Steps({ current }: { current: number }) {
       })}
     </div>
   );
+}
+
+export interface Readiness {
+  severity: "bad" | "warn";
+  /** What is wrong, in the therapist's terms. */
+  what: string;
+  /** What to do about it, when there is something to do. */
+  todo?: string;
+}
+
+/**
+ * Can a session be recorded right now, and if not, why?
+ *
+ * Returns null when there is nothing to say, and the top bar then shows
+ * nothing at all. That is deliberate: in a room where the machine is working
+ * almost all of the time, a permanent green badge is read once and then never
+ * again, so the one morning it turns red it is not read either.
+ *
+ * Ordered worst first -- a therapist should be told the thing that stops them,
+ * not the first thing the console happens to notice.
+ */
+export function readiness(s: Snapshot | null): Readiness | null {
+  if (s === null) {
+    return { severity: "warn", what: "Connecting to the console…" };
+  }
+  if (s.link.state !== "streaming") {
+    return {
+      severity: "bad",
+      what: "The load cells are not connected",
+      todo: "Nothing can be weighed or recorded. Check the USB cable to the board.",
+    };
+  }
+  if (s.calibration.status !== "ok") {
+    return {
+      severity: "bad",
+      what: "No calibration is selected",
+      todo: "Every weight comes from it. A technician must set one before a session.",
+    };
+  }
+  const first = s.warnings[0];
+  if (first) {
+    const more = s.warnings.length - 1;
+    return {
+      severity: "warn",
+      what: first.message,
+      todo: more > 0 ? `and ${more} more ${more === 1 ? "warning" : "warnings"}` : undefined,
+    };
+  }
+  return null;
 }
