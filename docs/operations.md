@@ -110,7 +110,7 @@ Most failures fall into a short list.
 | What you see | What it means |
 |---|---|
 | `link: waiting`, `Board not found` | The board is unplugged, or the udev rule has not applied. Reboot once; then check the cable. |
-| `link: streaming` but one cell near zero | That load cell or its cable has failed. The deck runs on three corners and every weight is understated. |
+| `A load cell has stopped responding` | The console found it itself: that corner is not moving while the others are. The deck is running on three corners and every weight is understated. Check the named cell's cable at the board. |
 | `rate_hz` well below nominal | Packets are being dropped. Check the serial link speed before anything else. |
 | `short` or `timeouts` climbing | USB trouble: cable, hub, or autosuspend. |
 | `calibration: missing` | No coefficients selected. Sessions cannot start. |
@@ -123,6 +123,18 @@ Live logs, when you have a shell:
 journalctl -u treadmill-core -f
 treadmill logs -f --level warning
 ```
+
+### The deck self-check
+
+The console watches the four load cells continuously and raises a fault when one
+stops responding. It compares how far each corner **travels**, not how much it
+carries -- a patient standing off-centre genuinely unloads a corner, but every
+working corner still moves with each step. On the real failure here, the three
+live cells travelled 42-43 kg between their 5th and 95th percentiles while the
+dead one travelled 4.4 kg: 99%, 101%, 102% of the median, against 10%.
+
+It only judges while somebody is walking, says nothing when the deck is still,
+and names the corner when it fires.
 
 ---
 
@@ -165,10 +177,10 @@ secrets, short typed codes, expiry, each engineer identified — and roughly a
 week's work, but today a technician PIN is all there is, and nothing
 distinguishes a Rehax engineer from clinic staff.
 
-**The machine cannot tell you anything is wrong.** It is offline by design and
-has no outbound reporting, so a dead load cell is discovered when somebody
-notices the numbers look odd. A failed corner ran for weeks here before it was
-found, and only because the raw data was examined by hand.
+**The machine cannot tell *you* anything is wrong.** It now notices a dead load
+cell and says so on its own screen -- see the deck self-check -- but it is
+offline by design and has no outbound reporting, so somebody at the clinic still
+has to read the screen and pick up the phone. Nothing reaches Rehax by itself.
 
 **There is no fleet view.** No list of machines, versions, last-seen times or
 installation dates. You cannot answer "which sites are on the old release?"
@@ -190,7 +202,6 @@ reach that port.
 1. Support contact and serial number on screen — hours of work, removes the
    worst gap.
 2. API authentication — the roles are decorative without it.
-3. A startup self-check that notices a dead load cell and says so.
-4. The service login.
+3. The service login.
 5. Disk encryption.
 6. Fleet view and remote access, together, since they are the same problem.

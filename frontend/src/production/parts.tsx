@@ -205,6 +205,14 @@ export function readiness(s: Snapshot | null): Readiness | null {
       todo: "Every weight comes from it. A technician must set one before a session.",
     };
   }
+  const cell = s.warnings.find((w) => w.code === "cell_not_responding");
+  if (cell) {
+    return {
+      severity: "bad",
+      what: "A load cell has stopped responding",
+      todo: cell.message,
+    };
+  }
   const first = s.warnings[0];
   if (first) {
     const more = s.warnings.length - 1;

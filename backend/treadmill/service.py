@@ -27,6 +27,7 @@ from treadmill.device.base import LinkState, PacketSource, StateChange, Transfer
 from treadmill.height.controller import HeightController
 from treadmill.logs import get_logger, log_event
 from treadmill.people.store import PeopleStore
+from treadmill.gait.cellhealth import CellHealthMonitor
 from treadmill.processor import StreamProcessor
 from treadmill.protocol.constants import CHANNEL_NAMES, SAMPLES_PER_PACKET
 from treadmill.protocol.health import StreamHealth, finite_or_none
@@ -65,6 +66,10 @@ class Console:
         self.height = height if height is not None else HeightController(None)
         self.health = StreamHealth(config.nominal_rate_hz)
         self.processor = StreamProcessor(self.health, config.nominal_rate_hz)
+        # Watches for a corner that has stopped responding. Runs whenever the
+        # deck is being walked on, session or not, because a cell can fail
+        # between sessions and the next one would record understated weights.
+        self.cell_health = CellHealthMonitor()
         self.recorder = Recorder(config.data_dir / "recordings")
         self.calibration_store = CalibrationStore(config.data_dir / "calibration")
         self.profile: CalibrationProfile | None = self.calibration_store.load()
@@ -197,9 +202,13 @@ class Console:
                 self._weighing_segment = transfer.segment
                 self.weighing.reset()
                 self.chart.reset()
+                self.cell_health = CellHealthMonitor()   # a reconnect starts fresh
             for sample in samples:
                 self.weighing.add(sample.t_us, sample.values)
                 self.chart.add(sample, self.profile)
+                if self.profile is not None:
+                    self.cell_health.on_sample(
+                        sample.t_us / 1_000_000, self.profile.cell_kg(sample.values))
             if session is not None and samples:
                 session.on_samples(samples)
             self._last_data = time.monotonic()
@@ -384,6 +393,11 @@ class Console:
                 time.monotonic() - self._link_since > NO_DATA_AFTER_S:
             warnings.insert(0, {"code": "no_data",
                                 "message": "Connected, but no data is arriving from the board."})
+        deck = self.cell_health.report()
+        if deck.fault:
+            # Ahead of lesser warnings: a dead corner makes every weight wrong,
+            # and nothing downstream can tell.
+            warnings.insert(0, {"code": "cell_not_responding", "message": deck.fault})
         stats = {s.name: s for s in self.health.channel_stats()}
         channels = []
         for name in CHANNEL_NAMES:
@@ -398,6 +412,7 @@ class Console:
                 "noise": round(s.step_noise, 1) if s else None,
             })
         return {
+            "deck": deck.as_dict(),
             "app": {"version": __version__, "source": self.source.name,
                     "nominal_rate_hz": self.config.nominal_rate_hz},
             "link": {"state": str(self.link_state), "detail": self.link_detail,

@@ -63,3 +63,25 @@ describe("readiness", () => {
     expect(readiness(null)?.what).toMatch(/connecting/i);
   });
 });
+
+describe("readiness: a failed load cell", () => {
+  it("is treated as a blocker, not a passing warning", () => {
+    const s = {
+      ...ok,
+      warnings: [{ code: "cell_not_responding",
+                   message: "The bottom left load cell is not responding. Every weight is being under-reported." }],
+    } as unknown as Snapshot;
+    const r = readiness(s);
+    expect(r?.severity).toBe("bad");
+    expect(r?.what).toMatch(/load cell has stopped responding/i);
+    expect(r?.todo).toMatch(/bottom left/i);
+  });
+
+  it("still comes second to the board being absent entirely", () => {
+    const s = {
+      ...withLink("waiting"),
+      warnings: [{ code: "cell_not_responding", message: "..." }],
+    } as unknown as Snapshot;
+    expect(readiness(s)?.what).toMatch(/not connected/i);
+  });
+});
